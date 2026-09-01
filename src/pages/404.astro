@@ -19,6 +19,30 @@ const path = "/404/";
   <Header locale={defaultLocale} />
 
   <main id="main-content">
+    <script is:inline>
+      (function() {
+        try {
+          var trimmed = window.location.pathname.replace(/^\/|\/$/g, '');
+          var germanSlugs = {
+            'pdf-zusammenfuegen': '/de/pdf-zusammenfuegen/',
+            'pdf-teilen': '/de/pdf-teilen/',
+            'pdf-sperren': '/de/pdf-sperren/',
+            'pdf-entsperren': '/de/pdf-entsperren/',
+            'pdf-zu-jpg': '/de/pdf-zu-jpg/',
+            'jpg-zu-pdf': '/de/jpg-zu-pdf/',
+            'csv-zu-pdf': '/de/csv-zu-pdf/',
+            'pdf-zu-csv': '/de/pdf-zu-csv/',
+            'jpg-zu-csv': '/de/jpg-zu-csv/',
+            'pdf-beschriften': '/de/pdf-beschriften/',
+            'pdf-erstellen': '/de/pdf-erstellen/',
+            'pdf-signieren': '/de/pdf-signieren/'
+          };
+          if (germanSlugs[trimmed]) {
+            window.location.replace(germanSlugs[trimmed]);
+          }
+        } catch (e) {}
+      })();
+    </script>
     <div class="container notfound">
       <h1>{t.notFoundTitle}</h1>
       <p>{t.notFoundBody}</p>

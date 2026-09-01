@@ -69,6 +69,12 @@ export default function LanguageSwitcher({ current, paths, options }: Props) {
   function selectAt(i: number) {
     const opt = options[i];
     if (!opt) return;
+    try {
+      localStorage.setItem("preferred_locale", opt.locale);
+      document.cookie = `preferred_locale=${opt.locale}; path=/; max-age=31536000; SameSite=Lax`;
+    } catch {
+      // Storage unavailable in private browsing mode
+    }
     if (opt.locale === current) {
       // Re-clicking the active language just closes the menu.
       close();

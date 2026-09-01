@@ -4,7 +4,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import Header from "./Header.astro";
 import Footer from "./Footer.astro";
 import { ui, locales, type Locale } from "../i18n/ui";
-import { getTool, getRelatedToolIds } from "../data/tools";
+import { getTool, getRelatedToolIds, getToolUrl } from "../data/tools";
 
 import MergePdf from "./react/MergePdf.tsx";
 import SplitPdf from "./react/SplitPdf.tsx";
@@ -32,17 +32,17 @@ const site = Astro.site!;
 
 const alternates = locales.map((l) => ({
   locale: l,
-  path: `/${getTool(data.tool)!.slug[l]}/`,
+  path: getToolUrl(toolDef, l),
 }));
 
-const path = `/${getTool(data.tool)!.slug[locale]}/`;
+const path = getToolUrl(toolDef, locale);
 const title = data.title;
 const description = data.description;
 
 // Language switcher keeps the user on the same tool in another language.
 const languagePaths = {
-  en: `/${getTool(data.tool)!.slug.en}/`,
-  de: `/${getTool(data.tool)!.slug.de}/`,
+  en: getToolUrl(toolDef, "en"),
+  de: getToolUrl(toolDef, "de"),
 };
 
 const messages = {
@@ -84,8 +84,8 @@ const faqSchema = data.faq
 const breadcrumbSchema = {
   "@type": "BreadcrumbList",
   itemListElement: [
-    { "@type": "ListItem", position: 1, name: t.navHome, item: new URL("/", site).href },
-    { "@type": "ListItem", position: 2, name: t.toolsSectionTitle, item: new URL(`${locale === "de" ? "/de/" : "/"}`, site).href },
+    { "@type": "ListItem", position: 1, name: t.navHome, item: new URL(locale === "en" ? "/" : "/de/", site).href },
+    { "@type": "ListItem", position: 2, name: t.toolsSectionTitle, item: new URL(locale === "en" ? "/#tools" : "/de/#tools", site).href },
     { "@type": "ListItem", position: 3, name: data.shortTitle, item: new URL(path, site).href },
   ],
 };
@@ -190,7 +190,7 @@ const isBuilt = [
         <ul>
           {related.map((r) => (
             <li>
-              <a href={`/${r.slug[locale]}/`}>
+              <a href={getToolUrl(r, locale)}>
                 <strong>{r.label[locale]}</strong>
                 <span>{r.summary[locale]}</span>
               </a>

@@ -3,7 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import Header from "./Header.astro";
 import Footer from "./Footer.astro";
 import { ui, locales, type Locale } from "../i18n/ui";
-import { getTool } from "../data/tools";
+import { getTool, getToolUrl } from "../data/tools";
 import { homeFaq, features } from "../data/content";
 import FaqAccordion from "./react/FaqAccordion.tsx";
 import TiltCard from "./react/TiltCard.tsx";
@@ -30,8 +30,11 @@ const homeTools = [
   "sign-pdf",
 ].map((id) => getTool(id)!).filter(Boolean);
 
-const path = "/";
-const alternates = locales.map((l) => ({ locale: l, path: "/" }));
+const path = locale === "en" ? "/" : "/de/";
+const alternates = [
+  { locale: "en", path: "/" },
+  { locale: "de", path: "/de/" },
+];
 
 const languagePaths = {
   en: "/",
@@ -97,7 +100,7 @@ const jsonLd = [
         <ul class="tools__grid">
           {homeTools.map((tool) => (
             <li>
-              <a class="tool-card" href={`/${tool.slug[locale]}/`}>
+              <a class="tool-card" href={getToolUrl(tool, locale)}>
                 <span class="tool-card__badge" data-processing={tool.processing}>
                   {tool.processing === "client"
                     ? t.clientSide

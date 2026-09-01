@@ -179,6 +179,18 @@ export function getRelatedToolIds(tool: ToolDef): string[] {
   return tool.related.filter((id) => byId.has(id));
 }
 
+export function getToolUrl(tool: ToolDef, locale: Locale): string {
+  return locale === "en" ? `/${tool.slug.en}/` : `/${locale}/${tool.slug[locale]}/`;
+}
+
+export function getToolBySlug(slug: string): { tool: ToolDef; locale: Locale } | undefined {
+  for (const t of tools) {
+    if (t.slug.en === slug) return { tool: t, locale: "en" };
+    if (t.slug.de === slug) return { tool: t, locale: "de" };
+  }
+  return undefined;
+}
+
 /** Tools read for a specific locale, in display order. Tier-1 client tools first. */
 export function toolsForLocale(locale: Locale): ToolDef[] {
   return tools;

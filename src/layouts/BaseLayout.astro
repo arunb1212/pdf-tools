@@ -118,6 +118,18 @@ const schemaEntry = jsonLdArray.length
     <meta name="theme-color" content="#ffffff" />
 
     <script type="application/ld+json" set:html={JSON.stringify(schemaEntry)} />
+    <script is:inline>
+      (function() {
+        try {
+          var pref = localStorage.getItem('preferred_locale');
+          var path = window.location.pathname;
+          // If preferred locale is German and user lands directly on English root, redirect to German home
+          if (pref === 'de' && (path === '/' || path === '')) {
+            window.location.replace('/de/');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <style is:global>
       :root {
         @media (prefers-reduced-motion: reduce) {

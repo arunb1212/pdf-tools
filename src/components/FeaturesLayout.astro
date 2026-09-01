@@ -14,7 +14,7 @@ interface Props {
 const { locale } = Astro.props;
 const t = ui[locale];
 
-const path = "/features/";
+const path = locale === "en" ? "/features/" : "/de/features/";
 const alternates = [
   { locale: "en", path: "/features/" },
   { locale: "de", path: "/de/features/" },

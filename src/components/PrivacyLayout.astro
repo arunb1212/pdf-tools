@@ -11,8 +11,11 @@ interface Props {
 const { locale } = Astro.props;
 const t = ui[locale];
 
-const path = "/privacy/";
-const alternates = locales.map((l) => ({ locale: l, path: "/privacy/" }));
+const path = locale === "en" ? "/privacy/" : "/de/privacy/";
+const alternates = [
+  { locale: "en", path: "/privacy/" },
+  { locale: "de", path: "/de/privacy/" },
+];
 
 const languagePaths = {
   en: "/privacy/",

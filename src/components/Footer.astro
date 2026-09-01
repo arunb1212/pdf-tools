@@ -1,6 +1,6 @@
 ---
 import { ui, type Locale } from "../i18n/ui";
-import { tools } from "../data/tools";
+import { tools, getToolUrl } from "../data/tools";
 
 interface Props {
   locale: Locale;
@@ -32,7 +32,7 @@ const footerTools = tools.filter((tool) =>
 <footer class="site-footer">
   <div class="container site-footer__grid">
     <div class="site-footer__brand">
-      <a class="site-footer__name" href={`/`}>
+      <a class="site-footer__name" href={locale === "en" ? "/" : "/de/"}>
         <span class="site-footer__logo" aria-hidden="true">📄</span>
         <span>{t.siteName}</span>
       </a>
@@ -44,7 +44,7 @@ const footerTools = tools.filter((tool) =>
       <ul class="site-footer__tools">
         {footerTools.map((tool) => (
           <li>
-            <a href={`/${tool.slug[locale]}/`}>{tool.label[locale]}</a>
+            <a href={getToolUrl(tool, locale)}>{tool.label[locale]}</a>
           </li>
         ))}
       </ul>
@@ -55,7 +55,7 @@ const footerTools = tools.filter((tool) =>
       <ul>
         <li><a href={locale === "en" ? "/features/" : "/de/features/"}>{t.navFeatures}</a></li>
         <li><a href={locale === "en" ? "/about/" : "/de/about/"}>{t.navAbout}</a></li>
-        <li><a href={`/privacy/`}>{t.footerPrivacy}</a></li>
+        <li><a href={locale === "en" ? "/privacy/" : "/de/privacy/"}>{t.footerPrivacy}</a></li>
       </ul>
     </nav>
   </div>
