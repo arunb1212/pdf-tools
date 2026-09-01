@@ -184,7 +184,9 @@ export default function LanguageSwitcher({ current, paths, options }: Props) {
               >
                 <span className="lang-switcher__flag" aria-hidden="true">{opt.flag}</span>
                 <span className="lang-switcher__label">{opt.label}</span>
-                <span className="lang-switcher__native">{opt.nativeLabel}</span>
+                {opt.nativeLabel && opt.nativeLabel !== opt.label && (
+                  <span className="lang-switcher__native">{opt.nativeLabel}</span>
+                )}
                 {opt.locale === current && (
                   <svg className="lang-switcher__check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
