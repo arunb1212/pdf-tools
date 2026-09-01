@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
-import { loadPdfJs, loadPdfLib, type ToolMessages } from "@/lib/pdf";
+import { loadPdfJs, loadPdfLib, loadJsPDF, type ToolMessages } from "@/lib/pdf";
 
 interface Props {
   messages: ToolMessages;
@@ -9,7 +9,7 @@ interface Props {
 
 type Mode = "draw" | "type" | "upload" | "camera";
 
-const DISPLAY_SCALE = 1.3;
+const DISPLAY_SCALE = 1.6;
 
 // Utility: Process image to extract signature strokes from white paper
 function extractSignatureFromCanvas(
@@ -95,17 +95,6 @@ function extractSignatureFromCanvas(
   return canvas.toDataURL("image/png");
 }
 
-// Convert base64 data URL to Uint8Array for pdf-lib
-function dataUrlToBytes(dataUrl: string): Uint8Array {
-  const base64 = dataUrl.split(",")[1];
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}
-
 export default function SignPdf({ messages }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<Mode>("draw");
@@ -130,7 +119,7 @@ export default function SignPdf({ messages }: Props) {
 
   // Signature and placement
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
-  const [sigScale, setSigScale] = useState<number>(30); // % of page width
+  const [sigScale, setSigScale] = useState<number>(28); // % of page width
   const [placed, setPlaced] = useState<{ x: number; y: number } | null>(null);
   const [placedPage, setPlacedPage] = useState<number>(1);
   const [isDragging, setIsDragging] = useState(false);
@@ -175,14 +164,17 @@ export default function SignPdf({ messages }: Props) {
     setFile(f);
     setPageNum(1);
     setState("idle");
+    setDoneLabel(null);
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+    setDownloadUrl(null);
+
     try {
       const pdfjs = await loadPdfJs();
       const data = await f.arrayBuffer();
       const pdf = await pdfjs.getDocument({ data }).promise;
       setPdfDoc(pdf);
       setTotalPages(pdf.numPages);
-      // Place signature near bottom center by default on page 1
-      setPlaced({ x: 0.5, y: 0.82 });
+      setPlaced({ x: 0.5, y: 0.75 });
       setPlacedPage(1);
     } catch (err) {
       console.error("PDF load error:", err);
@@ -260,7 +252,7 @@ export default function SignPdf({ messages }: Props) {
     if (canvas) {
       setSignatureUrl(canvas.toDataURL("image/png"));
       if (!placed) {
-        setPlaced({ x: 0.5, y: 0.82 });
+        setPlaced({ x: 0.5, y: 0.75 });
         setPlacedPage(pageNum);
       }
     }
@@ -289,7 +281,7 @@ export default function SignPdf({ messages }: Props) {
     ctx.fillText(text, c.width / 2, c.height / 2);
     setSignatureUrl(c.toDataURL("image/png"));
     if (!placed) {
-      setPlaced({ x: 0.5, y: 0.82 });
+      setPlaced({ x: 0.5, y: 0.75 });
       setPlacedPage(pageNum);
     }
   }
@@ -324,7 +316,7 @@ export default function SignPdf({ messages }: Props) {
         const extracted = extractSignatureFromCanvas(c, threshold);
         setSignatureUrl(extracted);
         if (!placed) {
-          setPlaced({ x: 0.5, y: 0.82 });
+          setPlaced({ x: 0.5, y: 0.75 });
           setPlacedPage(pageNum);
         }
       };
@@ -361,7 +353,6 @@ export default function SignPdf({ messages }: Props) {
     c.width = video.videoWidth || 640;
     c.height = video.videoHeight || 480;
     const ctx = c.getContext("2d")!;
-    // Mirror the capture to match camera view
     ctx.translate(c.width, 0);
     ctx.scale(-1, 1);
     ctx.drawImage(video, 0, 0, c.width, c.height);
@@ -371,7 +362,7 @@ export default function SignPdf({ messages }: Props) {
     const extracted = extractSignatureFromCanvas(c, threshold);
     setSignatureUrl(extracted);
     if (!placed) {
-      setPlaced({ x: 0.5, y: 0.82 });
+      setPlaced({ x: 0.5, y: 0.75 });
       setPlacedPage(pageNum);
     }
   }
@@ -392,9 +383,8 @@ export default function SignPdf({ messages }: Props) {
     const x = (e.clientX - rect.left) / rect.width;
     const y = (e.clientY - rect.top) / rect.height;
     
-    // Clamp so the signature doesn't stick out of the PDF page
     const halfWidthRatio = (sigScale / 100) / 2;
-    const halfHeightRatio = halfWidthRatio * 0.45; // estimated signature aspect ratio
+    const halfHeightRatio = halfWidthRatio * 0.45;
     
     setPlaced({
       x: Math.max(halfWidthRatio, Math.min(1 - halfWidthRatio, x)),
@@ -418,7 +408,7 @@ export default function SignPdf({ messages }: Props) {
     const startClientX = e.clientX;
     const startClientY = e.clientY;
     const initialX = placed ? placed.x : 0.5;
-    const initialY = placed ? placed.y : 0.82;
+    const initialY = placed ? placed.y : 0.75;
 
     const halfW = (markerRect.width / 2) / canvasRect.width;
     const halfH = (markerRect.height / 2) / canvasRect.height;
@@ -430,7 +420,6 @@ export default function SignPdf({ messages }: Props) {
       const rawX = initialX + deltaX;
       const rawY = initialY + deltaY;
 
-      // Confine strictly inside the PDF page boundaries
       const clampedX = Math.max(halfW, Math.min(1 - halfW, rawX));
       const clampedY = Math.max(halfH, Math.min(1 - halfH, rawY));
 
@@ -463,7 +452,7 @@ export default function SignPdf({ messages }: Props) {
 
     function onResizeMove(ev: PointerEvent) {
       const deltaPercent = ((ev.clientX - startClientX) / canvasRect.width) * 100 * 2;
-      const newScale = Math.max(12, Math.min(70, initialScale + deltaPercent));
+      const newScale = Math.max(10, Math.min(75, initialScale + deltaPercent));
       setSigScale(Math.round(newScale));
     }
 
@@ -477,50 +466,98 @@ export default function SignPdf({ messages }: Props) {
     handle.addEventListener("pointerup", onResizeUp);
   }
 
-  // --- Save with pdf-lib (Fast, reliable, zero quality loss) ---
+  // --- Save / Bake with bulletproof PDF generator ---
   async function bake() {
     if (!file || !signatureUrl) return;
     setState("processing");
     try {
-      const { PDFDocument } = await loadPdfLib();
-      const pdfBytes = await file.arrayBuffer();
-      const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+      const sigRes = await fetch(signatureUrl);
+      const sigBuffer = await sigRes.arrayBuffer();
 
-      const pages = doc.getPages();
-      const targetIndex = Math.max(0, Math.min(placedPage - 1, pages.length - 1));
-      const targetPage = pages[targetIndex];
-      const { width, height } = targetPage.getSize();
+      // Attempt 1: Vector lossless embedding with pdf-lib
+      try {
+        const { PDFDocument } = await loadPdfLib();
+        const fileBuffer = await file.arrayBuffer();
+        const doc = await PDFDocument.load(fileBuffer, { ignoreEncryption: true });
 
-      // Convert signature PNG to bytes
-      const sigPngBytes = dataUrlToBytes(signatureUrl);
-      const sigImage = await doc.embedPng(sigPngBytes);
+        const pages = doc.getPages();
+        const targetIndex = Math.max(0, Math.min(placedPage - 1, pages.length - 1));
+        const targetPage = pages[targetIndex];
+        const { width, height } = targetPage.getSize();
 
-      const widthRatio = sigScale / 100;
-      const sigW = width * widthRatio;
-      const sigH = sigW * (sigImage.height / sigImage.width);
+        const sigImage = await doc.embedPng(sigBuffer);
+        const sigW = width * (sigScale / 100);
+        const sigH = sigW * (sigImage.height / sigImage.width);
 
-      const posX = placed ? placed.x : 0.5;
-      const posY = placed ? placed.y : 0.82;
+        const posX = placed ? placed.x : 0.5;
+        const posY = placed ? placed.y : 0.75;
 
-      // In PDF coordinate space, (0, 0) is bottom-left
-      const x = Math.max(0, Math.min(width - sigW, posX * width - sigW / 2));
-      const y = Math.max(0, Math.min(height - sigH, height - posY * height - sigH / 2));
+        const x = Math.max(0, Math.min(width - sigW, posX * width - sigW / 2));
+        const y = Math.max(0, Math.min(height - sigH, height - posY * height - sigH / 2));
 
-      targetPage.drawImage(sigImage, {
-        x,
-        y,
-        width: sigW,
-        height: sigH,
-      });
+        targetPage.drawImage(sigImage, {
+          x,
+          y,
+          width: sigW,
+          height: sigH,
+        });
 
-      const savedBytes = await doc.save();
-      const blob = new Blob([savedBytes as unknown as ArrayBuffer], { type: "application/pdf" });
-      setDownloadUrl(URL.createObjectURL(blob));
+        const savedBytes = await doc.save();
+        const blob = new Blob([savedBytes as unknown as ArrayBuffer], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        setDownloadUrl(url);
+        setFilename(`signed-${file.name.replace(/\.pdf$/i, "")}.pdf`);
+        setDoneLabel(`Signature successfully applied to page ${placedPage} of ${pages.length}`);
+        setState("done");
+        return;
+      } catch (pdfLibErr) {
+        console.warn("pdf-lib direct embed encountered an issue, using rendering fallback:", pdfLibErr);
+      }
+
+      // Attempt 2: Fallback rendering with jsPDF
+      const pdfjs = await loadPdfJs();
+      const { jsPDF } = await loadJsPDF();
+      const data = await file.arrayBuffer();
+      const pdf = await pdfjs.getDocument({ data }).promise;
+
+      const firstPage = await pdf.getPage(1);
+      const firstViewport = firstPage.getViewport({ scale: 1.5 });
+      const w0 = Math.round(firstViewport.width * 0.75);
+      const h0 = Math.round(firstViewport.height * 0.75);
+      const doc = new jsPDF({ unit: "pt", format: [w0, h0], orientation: w0 >= h0 ? "landscape" : "portrait" });
+
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const off = document.createElement("canvas");
+        off.width = viewport.width;
+        off.height = viewport.height;
+        const ctx = off.getContext("2d")!;
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        const w = Math.round(viewport.width * 0.75);
+        const h = Math.round(viewport.height * 0.75);
+
+        if (p > 1) doc.addPage([w, h], w >= h ? "landscape" : "portrait");
+        doc.addImage(off.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, w, h);
+
+        if (placed && p === placedPage) {
+          const sigW = w * (sigScale / 100);
+          const sigH = sigW * 0.4;
+          const sigX = Math.max(0, Math.min(w - sigW, placed.x * w - sigW / 2));
+          const sigY = Math.max(0, Math.min(h - sigH, placed.y * h - sigH / 2));
+          doc.addImage(signatureUrl, "PNG", sigX, sigY, sigW, sigH);
+        }
+      }
+
+      const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
+      setDownloadUrl(url);
       setFilename(`signed-${file.name.replace(/\.pdf$/i, "")}.pdf`);
-      setDoneLabel(`Signature successfully applied to page ${placedPage} of ${pages.length}`);
+      setDoneLabel(`Signature applied to page ${placedPage} of ${pdf.numPages}`);
       setState("done");
     } catch (err) {
-      console.error("Sign PDF error:", err);
+      console.error("Sign PDF final error:", err);
       setState("error");
     }
   }
@@ -827,7 +864,7 @@ export default function SignPdf({ messages }: Props) {
                     <span style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>Size:</span>
                     <input
                       type="range"
-                      min="12"
+                      min="10"
                       max="65"
                       value={sigScale}
                       onChange={(e) => setSigScale(Number(e.target.value))}
