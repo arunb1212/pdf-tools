@@ -1,0 +1,69 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "./Header.astro";
+import Footer from "./Footer.astro";
+import { ui, locales, type Locale } from "../i18n/ui";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = ui[locale];
+
+const path = "/privacy/";
+const alternates = locales.map((l) => ({ locale: l, path: "/privacy/" }));
+
+const languagePaths = {
+  en: "/privacy/",
+  de: "/de/privacy/",
+};
+
+const title =
+  locale === "de"
+    ? `${t.siteName} — Datenschutz`
+    : `${t.siteName} — Privacy`;
+const description =
+  locale === "de"
+    ? "So verarbeitet PDF Tools deine Dateien: alles läuft in deinem Browser und wird nie hochgeladen."
+    : "How PDF Tools handles your files: everything is processed in your browser and never uploaded.";
+---
+
+<BaseLayout
+  locale={locale}
+  title={title}
+  description={description}
+  path={path}
+  alternates={alternates}
+>
+  <Header locale={locale} languagePaths={languagePaths} />
+
+  <main id="main-content">
+    <article class="container page">
+      <h1>{locale === "de" ? "Datenschutzerklärung" : "Privacy policy"}</h1>
+
+      <h2>{locale === "de" ? "Deine Dateien bleiben auf deinem Gerät" : "Your files stay on your device"}</h2>
+      <p>
+        {locale === "de"
+          ? "Jedes als „clientseitig“ markierte Tool verarbeitet deine PDFs und Bilder vollständig in deinem Browser. Deine Dateien werden nie auf unsere Server hochgeladen und wir sehen ihre Inhalte nie."
+          : "Every tool marked \u201Cclient-side\u201D processes your PDFs and images entirely in your browser. Your files are never uploaded to our servers, and we never see their contents."}
+      </p>
+
+      <h2>{locale === "de" ? "Die Tools, die einen Server nutzen" : "The tools that use a server"}</h2>
+      <p>
+        {locale === "de"
+          ? "Eine kleine Anzahl erweiterter Funktionen — Tabellenextraktion aus komplexen PDFs (PDF zu CSV) und optische Zeichenerkennung (JPG zu CSV / gescannte PDFs) — nutzt einen serverseitigen Fallback, wenn der Browser die Daten nicht zuverlässig parsen kann. In diesem Fall wird die Datei verarbeitet, das Ergebnis zurückgegeben und die Datei sofort gelöscht. Die Benutzeroberfläche kennzeichnet diese Nutzung deutlich."
+          : "A small number of advanced features — table extraction from complex PDFs (PDF to CSV) and optical character recognition (JPG to CSV / scanned PDFs) — use a server-side fallback when the browser can't parse the data reliably. When that happens, the file is processed, the result is returned, and the file is deleted immediately. The user interface clearly labels when this mode is used."}
+      </p>
+
+      <h2>{locale === "de" ? "Was wir nicht erfassen" : "What we don't collect"}</h2>
+      <p>
+        {locale === "de"
+          ? "Wir brauchen kein Konto, wir speichern deine Dateien nicht und wir verkaufen deine Daten nicht. Datenschutz ist das Produkt."
+          : "We don't require an account, we don't store your files, and we don't sell your data. Privacy is the product."}
+      </p>
+    </article>
+  </main>
+
+  <Footer locale={locale} />
+</BaseLayout>

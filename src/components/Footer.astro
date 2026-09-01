@@ -1,0 +1,162 @@
+---
+import { ui, type Locale } from "../i18n/ui";
+import { tools } from "../data/tools";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = ui[locale];
+const year = new Date().getFullYear();
+
+// Footer tool links: all tools with real pages.
+const footerTools = tools.filter((tool) =>
+  [
+    "merge-pdf",
+    "split-pdf",
+    "pdf-to-jpg",
+    "jpg-to-pdf",
+    "lock-pdf",
+    "unlock-pdf",
+    "csv-to-pdf",
+    "pdf-to-csv",
+    "jpg-to-csv",
+    "write-on-pdf",
+    "create-pdf",
+    "sign-pdf",
+  ].includes(tool.id),
+);
+---
+
+<footer class="site-footer">
+  <div class="container site-footer__grid">
+    <div class="site-footer__brand">
+      <a class="site-footer__name" href={`/`}>
+        <span class="site-footer__logo" aria-hidden="true">📄</span>
+        <span>{t.siteName}</span>
+      </a>
+      <p class="site-footer__tagline">{t.tagline}</p>
+    </div>
+
+    <nav class="site-footer__col" aria-label={t.footerLinks}>
+      <h3>{t.footerLinks}</h3>
+      <ul class="site-footer__tools">
+        {footerTools.map((tool) => (
+          <li>
+            <a href={`/${tool.slug[locale]}/`}>{tool.label[locale]}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+
+    <nav class="site-footer__col" aria-label={t.footerCompany}>
+      <h3>{t.footerCompany}</h3>
+      <ul>
+        <li><a href={locale === "en" ? "/features/" : "/de/features/"}>{t.navFeatures}</a></li>
+        <li><a href={locale === "en" ? "/about/" : "/de/about/"}>{t.navAbout}</a></li>
+        <li><a href={`/privacy/`}>{t.footerPrivacy}</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <div class="container site-footer__bottom">
+    <span>© {year} {t.siteName}.</span>
+    <span class="site-footer__disclaimer">{t.footerDisclaimer}</span>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+    margin-top: 4rem;
+    padding: 3rem 0 1.5rem;
+  }
+  .site-footer__grid {
+    display: grid;
+    grid-template-columns: 1.2fr 2fr 1fr;
+    gap: 2.5rem;
+    align-items: start;
+  }
+  .site-footer__brand {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .site-footer__name {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--color-text);
+    text-decoration: none;
+  }
+  .site-footer__logo {
+    font-size: 1.25rem;
+  }
+  .site-footer__tagline {
+    color: var(--color-text-muted);
+    margin: 0;
+    max-width: 24ch;
+  }
+  .site-footer__col h3 {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    margin: 0 0 1rem;
+  }
+  .site-footer__col ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+  /* Two-column tool list so 12 links don't make a tall unbalanced column. */
+  .site-footer__tools {
+    grid-template-columns: repeat(2, 1fr);
+    column-gap: 1.5rem;
+  }
+  .site-footer__col a {
+    color: var(--color-text);
+    font-size: 0.92rem;
+  }
+  .site-footer__col a:hover {
+    color: var(--color-accent);
+  }
+  .site-footer__bottom {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    border-top: 1px solid var(--color-border);
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+  }
+  .site-footer__disclaimer {
+    opacity: 0.85;
+  }
+
+  @media (max-width: 900px) {
+    .site-footer__grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .site-footer__brand {
+      grid-column: 1 / -1;
+    }
+  }
+  @media (max-width: 560px) {
+    .site-footer__grid {
+      grid-template-columns: 1fr;
+      gap: 1.75rem;
+    }
+    .site-footer__tools {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

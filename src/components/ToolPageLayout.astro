@@ -1,0 +1,197 @@
+---
+import { getCollection, type CollectionEntry } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "./Header.astro";
+import Footer from "./Footer.astro";
+import { ui, locales, type Locale } from "../i18n/ui";
+import { getTool, getRelatedToolIds } from "../data/tools";
+
+import MergePdf from "./react/MergePdf.tsx";
+import SplitPdf from "./react/SplitPdf.tsx";
+import LockPdf from "./react/LockPdf.tsx";
+import UnlockPdf from "./react/UnlockPdf.tsx";
+import PdfToJpg from "./react/PdfToJpg.tsx";
+import JpgToPdf from "./react/JpgToPdf.tsx";
+import CsvToPdf from "./react/CsvToPdf.tsx";
+import PdfToCsv from "./react/PdfToCsv.tsx";
+import JpgToCsv from "./react/JpgToCsv.tsx";
+import WriteOnPdf from "./react/WriteOnPdf.tsx";
+import CreatePdf from "./react/CreatePdf.tsx";
+import SignPdf from "./react/SignPdf.tsx";
+
+interface Props {
+  entry: CollectionEntry<"tools">;
+  locale: Locale;
+}
+
+const { entry, locale } = Astro.props;
+const { data } = entry;
+const t = ui[locale];
+const toolDef = getTool(data.tool)!;
+const site = Astro.site!;
+
+const alternates = locales.map((l) => ({
+  locale: l,
+  path: `/${getTool(data.tool)!.slug[l]}/`,
+}));
+
+const path = `/${getTool(data.tool)!.slug[locale]}/`;
+const title = data.title;
+const description = data.description;
+
+// Language switcher keeps the user on the same tool in another language.
+const languagePaths = {
+  en: `/${getTool(data.tool)!.slug.en}/`,
+  de: `/${getTool(data.tool)!.slug.de}/`,
+};
+
+const messages = {
+  dragDrop: t.dragDrop,
+  browse: t.browse,
+  chooseFiles: t.chooseFiles,
+  unsupportedFile: t.unsupportedFile,
+  processing: t.processing,
+  download: t.download,
+  processAnother: t.processAnother,
+  errorGeneric: t.errorGeneric,
+  legalNote: t.legalNote,
+};
+
+const related = getRelatedToolIds(toolDef).map((id) => getTool(id)!);
+
+const softwareSchema = {
+  "@type": "SoftwareApplication",
+  name: data.shortTitle,
+  description: data.description,
+  applicationCategory: "UtilitiesApplication",
+  operatingSystem: "Web",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  url: new URL(path, site).href,
+};
+
+const faqSchema = data.faq
+  ? {
+      "@type": "FAQPage",
+      mainEntity: data.faq.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
+    }
+  : null;
+
+// Breadcrumb: Home → Tools → this tool.
+const breadcrumbSchema = {
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: t.navHome, item: new URL("/", site).href },
+    { "@type": "ListItem", position: 2, name: t.toolsSectionTitle, item: new URL(`${locale === "de" ? "/de/" : "/"}`, site).href },
+    { "@type": "ListItem", position: 3, name: data.shortTitle, item: new URL(path, site).href },
+  ],
+};
+
+const jsonLd = faqSchema
+  ? [softwareSchema, faqSchema, breadcrumbSchema]
+  : [softwareSchema, breadcrumbSchema];
+
+const isBuilt = [
+  "MergePdf",
+  "SplitPdf",
+  "LockPdf",
+  "UnlockPdf",
+  "PdfToJpg",
+  "JpgToPdf",
+  "CsvToPdf",
+  "PdfToCsv",
+  "JpgToCsv",
+  "WriteOnPdf",
+  "CreatePdf",
+  "SignPdf",
+].includes(data.component);
+---
+
+<BaseLayout
+  locale={locale}
+  title={title}
+  description={description}
+  path={path}
+  alternates={alternates}
+  jsonLd={jsonLd}
+>
+  <Header locale={locale} languagePaths={languagePaths} />
+
+  <main id="main-content">
+    <article class="container tool-page">
+      <header class="tool-page__header">
+        <span class="tool-badge" data-processing={data.processing}>
+          {data.processing === "client" ? t.fullyClientSide : t.serverFallback}
+        </span>
+        <h1>{data.shortTitle}</h1>
+        <p class="tool-page__tagline">{data.description}</p>
+      </header>
+
+      <section class="widget" aria-label={data.shortTitle}>
+        {
+          isBuilt ? (
+            <>
+              {data.component === "MergePdf" && <MergePdf client:visible messages={messages} />}
+              {data.component === "SplitPdf" && <SplitPdf client:visible messages={messages} />}
+              {data.component === "LockPdf" && <LockPdf client:visible messages={messages} />}
+              {data.component === "UnlockPdf" && <UnlockPdf client:visible messages={messages} />}
+              {data.component === "PdfToJpg" && <PdfToJpg client:visible messages={messages} />}
+              {data.component === "JpgToPdf" && <JpgToPdf client:visible messages={messages} />}
+              {data.component === "CsvToPdf" && <CsvToPdf client:visible messages={messages} />}
+              {data.component === "PdfToCsv" && <PdfToCsv client:visible messages={messages} />}
+              {data.component === "JpgToCsv" && <JpgToCsv client:visible messages={messages} />}
+              {data.component === "WriteOnPdf" && <WriteOnPdf client:visible messages={messages} />}
+              {data.component === "CreatePdf" && <CreatePdf client:visible messages={messages} />}
+              {data.component === "SignPdf" && <SignPdf client:visible messages={messages} />}
+            </>
+          ) : (
+            <p class="coming-soon">{t.unsupportedFile}</p>
+          )
+        }
+        {data.processing === "client" && (
+          <p class="trust-line">
+            <span aria-hidden="true">🔒</span> {t.trustLine}
+          </p>
+        )}
+      </section>
+
+      <div class="tool-page__body">
+        <h2>{t.howToTitle}</h2>
+        <div class="tool-content__body">
+          <p>{data.description}</p>
+        </div>
+
+        {data.faq && (
+          <section class="faq" aria-labelledby="faq-heading">
+            <h2 id="faq-heading">{t.faqTitle}</h2>
+            {data.faq.map((item) => (
+              <details>
+                <summary>{item.q}</summary>
+                <p>{item.a}</p>
+              </details>
+            ))}
+          </section>
+        )}
+      </div>
+
+      <aside class="related" aria-label={t.relatedTools}>
+        <h2>{t.relatedTools}</h2>
+        <ul>
+          {related.map((r) => (
+            <li>
+              <a href={`/${r.slug[locale]}/`}>
+                <strong>{r.label[locale]}</strong>
+                <span>{r.summary[locale]}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </aside>
+    </article>
+  </main>
+
+  <Footer locale={locale} />
+</BaseLayout>

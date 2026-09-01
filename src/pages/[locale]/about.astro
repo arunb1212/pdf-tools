@@ -1,0 +1,10 @@
+---
+import AboutLayout from "../../components/AboutLayout.astro";
+
+export async function getStaticPaths() {
+  // Non-default locale about page only: /de/about/
+  return [{ params: { locale: "de" } }];
+}
+---
+
+<AboutLayout locale="de" />

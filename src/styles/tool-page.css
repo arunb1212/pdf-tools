@@ -1,0 +1,451 @@
+/* Tool page layout: hero header, widget, content, related tools. */
+.tool-page {
+  padding: 3rem 0 2rem;
+}
+
+.tool-page__header {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 2rem;
+}
+
+.tool-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: var(--color-accent-tint);
+  color: var(--color-accent);
+  margin-bottom: 1rem;
+}
+.tool-badge[data-processing="hybrid"] {
+  background: #f3e8c8;
+  color: #8a6d1a;
+}
+.tool-badge[data-processing="ocr"] {
+  background: #fdecec;
+  color: var(--color-error);
+}
+
+.tool-page__tagline {
+  color: var(--color-text-muted);
+  font-size: 1.1rem;
+  max-width: 60ch;
+  margin: 0 auto;
+}
+
+.widget {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.trust-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 1.25rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.coming-soon {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 1.5rem;
+}
+
+.tool-page__body {
+  max-width: 720px;
+  margin: 3rem auto 0;
+}
+.tool-page__body h2 {
+  margin-bottom: 0.75rem;
+}
+
+.faq {
+  margin-top: 2.5rem;
+}
+.faq details {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.5rem;
+  background: var(--color-bg);
+}
+.faq summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+.faq summary:hover {
+  color: var(--color-accent);
+}
+.faq details p {
+  margin: 0.75rem 0 0;
+  color: var(--color-text-muted);
+}
+
+.related {
+  max-width: 720px;
+  margin: 3rem auto 0;
+}
+.related h2 {
+  margin-bottom: 1rem;
+}
+.related ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+.related li a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  text-decoration: none;
+  background: var(--color-bg);
+}
+.related li a:hover {
+  border-color: var(--color-accent);
+  text-decoration: none;
+}
+.related li a span {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 560px) {
+  .related ul {
+    grid-template-columns: 1fr;
+  }
+  .tool-page {
+    padding: 2rem 0 1rem;
+  }
+}
+
+/* ---- CSV→PDF / PDF→CSV / JPG→CSV ---- */
+.file-preview {
+  margin-top: 1.25rem;
+}
+.file-preview__meta {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  margin-bottom: 0.75rem;
+}
+.ocr-note {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin: -0.25rem 0 1rem;
+}
+
+/* ---- Write on PDF ---- */
+.write-editor {
+  margin-top: 1.25rem;
+}
+.write-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.write-nav,
+.write-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.write-page {
+  font-weight: 600;
+  padding: 0 0.5rem;
+}
+.write-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+.write-controls input[type="number"],
+.write-controls input[type="color"] {
+  width: 60px;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.write-controls input[type="color"] {
+  width: 40px;
+  height: 32px;
+  padding: 0;
+  cursor: pointer;
+}
+.write-hint {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem;
+}
+.write-canvas-wrap {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface);
+  max-height: 70vh;
+}
+.write-canvas {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  background: #fff;
+}
+.write-box {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  cursor: move;
+  white-space: nowrap;
+  line-height: 1.2;
+  background: transparent;
+}
+.write-box.is-selected {
+  border-color: var(--color-accent);
+  background: rgba(255, 46, 46, 0.08);
+}
+.write-box__input {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 12ch;
+}
+.write-actions {
+  margin-top: 1rem;
+}
+
+/* ---- Create PDF (canvas editor) ---- */
+.create-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.create-tool {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.create-tool:hover {
+  border-color: var(--color-accent);
+}
+.create-tool.is-active {
+  background: var(--color-accent-tint);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.create-sep {
+  width: 1px;
+  height: 24px;
+  background: var(--color-border);
+  margin: 0 0.25rem;
+}
+.create-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+.create-control input[type="color"] {
+  width: 36px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.create-control input[type="number"] {
+  width: 64px;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.create-text-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.create-image-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.create-image-loaded {
+  color: var(--color-success);
+  font-size: 0.85rem;
+}
+.create-hint {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem;
+}
+.create-canvas-wrap {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #fff;
+  max-height: 70vh;
+}
+.create-canvas {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  background: #fff;
+  touch-action: none;
+}
+.create-text-box {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 2px 6px;
+  border: 1px dashed transparent;
+  cursor: text;
+  line-height: 1.2;
+}
+.create-text-box.is-selected {
+  border-color: var(--color-accent);
+  background: rgba(255, 46, 46, 0.06);
+}
+.create-text-input {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  outline: 2px solid var(--color-accent);
+  width: 14ch;
+}
+.create-download {
+  margin-top: 1rem;
+}
+
+/* ---- Sign PDF ---- */
+.sign-editor {
+  margin-top: 1.25rem;
+}
+.sign-mode {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.sign-draw {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.sign-canvas {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  touch-action: none;
+}
+.sign-type {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+.sign-type .input {
+  flex: 1;
+  min-width: 200px;
+  margin-bottom: 0;
+}
+.sign-type label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+.sign-type input[type="number"] {
+  width: 70px;
+  padding: 0.35rem 0.4rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.sign-preview {
+  margin-top: 1.25rem;
+}
+.sign-preview__sig {
+  height: 60px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  padding: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+.sign-hint {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin: 0 0 0.5rem;
+}
+.sign-pages-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+.sign-page-wrap {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-height: 70vh;
+  background: #fff;
+}
+.sign-page {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  background: #fff;
+}
+.sign-place-marker {
+  position: absolute;
+  width: 35%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  border: 1px dashed var(--color-accent);
+}
+.sign-place-marker img {
+  width: 100%;
+  display: block;
+}
+.legal-note {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  background: #fdf6e7;
+  color: #8a6d1a;
+  font-size: 0.85rem;
+}

@@ -1,0 +1,34 @@
+/* Design tokens — Fastlane-inspired palette from design.md.
+   One dominant red accent, warm white canvas, large rounded corners. */
+:root {
+  --color-accent: #ff2e2e;
+  --color-accent-hover: #e01d1d;
+  --color-accent-contrast: #ffffff;
+
+  --color-bg: #ffffff;
+  --color-surface: #f4f2f0;
+  --color-surface-warm: #faf8f6;
+  --color-border: rgba(17, 17, 17, 0.12);
+  --color-text: #121111;
+  --color-text-muted: #666666;
+
+  --color-focus: #ff2e2e;
+  --color-error: #c0392b;
+  --color-success: #1e8e3e;
+  --color-accent-tint: #ffe9e9;
+  --color-accent-tint-strong: #ffd4d4;
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 34px;
+
+  --font-sans: "GeistSans", "Geist", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --shadow-sm: 0 1px 2px rgba(20, 17, 17, 0.06), 0 1px 1px rgba(20, 17, 17, 0.04);
+  --shadow-md: 0 10px 30px rgba(20, 17, 17, 0.08), 0 2px 8px rgba(20, 17, 17, 0.04);
+  --shadow-lg: 0 30px 60px rgba(20, 17, 17, 0.12), 0 8px 20px rgba(20, 17, 17, 0.06);
+
+  --max-width: 1120px;
+}

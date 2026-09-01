@@ -1,0 +1,41 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { ui, defaultLocale } from "../i18n/ui";
+
+const t = ui[defaultLocale];
+const path = "/404/";
+---
+
+<BaseLayout
+  locale={defaultLocale}
+  title={`${t.notFoundTitle} — ${t.siteName}`}
+  description={t.notFoundBody}
+  path={path}
+  alternates={[{ locale: "en", path: "/" }]}
+  noindex
+>
+  <Header locale={defaultLocale} />
+
+  <main id="main-content">
+    <div class="container notfound">
+      <h1>{t.notFoundTitle}</h1>
+      <p>{t.notFoundBody}</p>
+      <a class="btn btn--primary" href="/">{t.notFoundHome}</a>
+    </div>
+  </main>
+
+  <Footer locale={defaultLocale} />
+</BaseLayout>
+
+<style>
+  .notfound {
+    text-align: center;
+    padding: 5rem 0;
+  }
+  .notfound p {
+    color: var(--color-text-muted);
+    margin-bottom: 1.5rem;
+  }
+</style>

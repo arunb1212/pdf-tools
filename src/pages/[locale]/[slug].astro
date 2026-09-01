@@ -1,0 +1,22 @@
+---
+import { getCollection } from "astro:content";
+import ToolPageLayout from "../../components/ToolPageLayout.astro";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("tools");
+  // Non-default locale pages only: /de/<slug>/ etc.
+  // entry.slug is the file path relative to the collection root (e.g. "de/pdf-teilen"),
+  // so strip the locale directory to use the bare filename as the URL slug.
+  return entries
+    .filter((e) => e.data.locale !== "en")
+    .map((entry) => ({
+      params: {
+        locale: entry.data.locale,
+        slug: entry.slug.split("/").pop()!,
+      },
+      props: { entry },
+    }));
+}
+---
+
+<ToolPageLayout entry={Astro.props.entry} locale={Astro.props.entry.data.locale} />

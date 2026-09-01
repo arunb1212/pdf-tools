@@ -1,0 +1,366 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "./Header.astro";
+import Footer from "./Footer.astro";
+import { ui, locales, type Locale } from "../i18n/ui";
+import { getTool } from "../data/tools";
+import { homeFaq, features } from "../data/content";
+import FaqAccordion from "./react/FaqAccordion.tsx";
+import TiltCard from "./react/TiltCard.tsx";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = ui[locale];
+
+const homeTools = [
+  "merge-pdf",
+  "split-pdf",
+  "lock-pdf",
+  "unlock-pdf",
+  "pdf-to-jpg",
+  "jpg-to-pdf",
+  "csv-to-pdf",
+  "pdf-to-csv",
+  "jpg-to-csv",
+  "write-on-pdf",
+  "create-pdf",
+  "sign-pdf",
+].map((id) => getTool(id)!).filter(Boolean);
+
+const path = "/";
+const alternates = locales.map((l) => ({ locale: l, path: "/" }));
+
+const languagePaths = {
+  en: "/",
+  de: "/de/",
+};
+
+const featureCards = features[locale];
+
+const jsonLd = [
+  {
+    "@type": "Organization",
+    "@id": `${Astro.site!.origin}/#organization`,
+    name: t.siteName,
+    url: Astro.site!.origin,
+    logo: { "@type": "ImageObject", url: new URL("/og-default.png", Astro.site!).href },
+    description: t.tagline,
+  },
+  {
+    "@type": "WebSite",
+    "@id": `${Astro.site!.origin}/#website`,
+    name: t.siteName,
+    url: Astro.site!.origin,
+    description: t.tagline,
+    publisher: { "@id": `${Astro.site!.origin}/#organization` },
+    inLanguage: locale === "de" ? "de-DE" : "en-US",
+  },
+  {
+    "@type": "FAQPage",
+    mainEntity: homeFaq[locale].map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  },
+];
+---
+
+<BaseLayout
+  locale={locale}
+  title={`${t.siteName} — ${t.tagline}`}
+  description={t.heroSubtitle}
+  path={path}
+  alternates={alternates}
+  jsonLd={jsonLd}
+>
+  <Header locale={locale} languagePaths={languagePaths} />
+
+  <main id="main-content">
+    <section class="hero">
+      <div class="container hero__inner">
+        <h1>{t.heroTitle}</h1>
+        <p class="hero__subtitle">{t.heroSubtitle}</p>
+        <a class="btn btn--primary hero__cta" href="#tools">{t.heroCta}</a>
+        <p class="hero__trust">
+          <span aria-hidden="true">🔒</span> {t.trustLine} · {t.fullyClientSide}
+        </p>
+      </div>
+    </section>
+
+    <section id="tools" class="tools">
+      <div class="container">
+        <h2>{t.toolsSectionTitle}</h2>
+        <ul class="tools__grid">
+          {homeTools.map((tool) => (
+            <li>
+              <a class="tool-card" href={`/${tool.slug[locale]}/`}>
+                <span class="tool-card__badge" data-processing={tool.processing}>
+                  {tool.processing === "client"
+                    ? t.clientSide
+                    : tool.processing === "hybrid"
+                      ? t.hybrid
+                      : tool.processing === "ocr"
+                        ? t.ocr
+                        : t.serverFallback}
+                </span>
+                <span class="tool-card__name">{tool.label[locale]}</span>
+                <span class="tool-card__desc">{tool.summary[locale]}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+
+    <section class="home-features">
+      <div class="container">
+        <h2>{t.featuresSectionTitle}</h2>
+        <ul class="home-features__grid">
+          {featureCards.map((card) => (
+            <li>
+              <TiltCard client:visible {...card} />
+            </li>
+          ))}
+        </ul>
+        <p class="home-features__cta">
+          <a href={locale === "en" ? "/features/" : "/de/features/"}>{t.homeFaqCta}</a>
+        </p>
+      </div>
+    </section>
+
+    <section class="home-cta">
+      <div class="container home-cta__inner">
+        <h2>{t.featuresSubsectionTitle}</h2>
+        <p>{t.featuresSubtitle}</p>
+        <a class="btn btn--secondary" href={locale === "en" ? "/features/" : "/de/features/"}>
+          {t.homeFaqCta}
+        </a>
+      </div>
+    </section>
+
+    <div class="container home-faq">
+      <FaqAccordion client:visible title={t.homeFaqHeading} items={homeFaq[locale]} />
+    </div>
+  </main>
+
+  <Footer locale={locale} />
+</BaseLayout>
+
+<style>
+  .hero {
+    padding: 5rem 0 3.5rem;
+    text-align: center;
+    background: linear-gradient(
+      180deg,
+      var(--color-surface-warm) 0%,
+      var(--color-bg) 100%
+    );
+  }
+  .hero__inner {
+    max-width: 720px;
+  }
+  .hero__subtitle {
+    color: var(--color-text-muted);
+    font-size: 1.15rem;
+    max-width: 60ch;
+    margin: 0 auto 1.5rem;
+  }
+  .hero__cta {
+    font-size: 1.05rem;
+    padding: 0.85rem 1.75rem;
+  }
+  .hero__trust {
+    margin-top: 1.5rem;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+  }
+
+  .tools {
+    padding: 3rem 0;
+  }
+  .tools h2 {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  .tools__grid {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+  .tool-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 1.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg);
+    color: var(--color-text);
+    text-decoration: none;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    height: 100%;
+  }
+  .tool-card:hover {
+    border-color: var(--color-accent);
+    text-decoration: none;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+  .tool-card__badge {
+    align-self: flex-start;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    background: var(--color-accent-tint);
+    color: var(--color-accent);
+  }
+  .tool-card__badge[data-processing="hybrid"] {
+    background: #f3e8c8;
+    color: #8a6d1a;
+  }
+  .tool-card__badge[data-processing="ocr"] {
+    background: #fdecec;
+    color: var(--color-error);
+  }
+  .tool-card__name {
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+  .tool-card__desc {
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+  }
+
+  .home-cta {
+    padding: 2.5rem 0;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .home-cta__inner {
+    text-align: center;
+    max-width: 640px;
+  }
+  .home-cta__inner p {
+    color: var(--color-text-muted);
+    margin-bottom: 1.25rem;
+  }
+
+  /* Home feature cards (3D) */
+  .home-features {
+    padding: 3rem 0;
+    background: var(--color-surface-warm);
+  }
+  .home-features h2 {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  .home-features__grid {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+  .home-features__cta {
+    text-align: center;
+    margin: 2rem 0 0;
+  }
+
+  .tilt-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.75rem;
+    height: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  .tilt-card:hover {
+    border-color: var(--color-accent);
+    box-shadow: var(--shadow-md);
+  }
+  .feature-icon {
+    width: 54px;
+    height: 54px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--color-accent-tint), var(--color-accent-tint-strong));
+    color: var(--color-accent);
+    margin-bottom: 0.75rem;
+    transform: translateZ(30px);
+  }
+  .feature-icon__svg {
+    display: block;
+  }
+  .tilt-card h3 {
+    transform: translateZ(20px);
+    font-size: 1.2rem;
+  }
+  .tilt-card p {
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    margin: 0;
+    transform: translateZ(12px);
+  }
+  .tilt-card__glow {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-lg);
+    pointer-events: none;
+    background: radial-gradient(300px circle at 50% 0%, rgba(255, 46, 46, 0.12), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .tilt-card:hover .tilt-card__glow {
+    opacity: 1;
+  }
+
+  .home-faq {
+    padding: 3rem 0;
+  }
+  .home-faq h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (max-width: 900px) {
+    .tools__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .home-features__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 560px) {
+    .tools__grid {
+      grid-template-columns: 1fr;
+    }
+    .home-features__grid {
+      grid-template-columns: 1fr;
+    }
+    .hero {
+      padding: 3rem 0 2rem;
+    }
+  }
+</style>

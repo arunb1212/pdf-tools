@@ -1,0 +1,264 @@
+/* Shared React tool island styles. Imported globally so islands are styled
+   even though their JS is loaded lazily. */
+.tool {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.dropzone__area {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.dropzone__area:hover,
+.dropzone__area.is-drag {
+  border-color: var(--color-accent);
+  background: var(--color-accent-tint);
+}
+.dropzone__icon {
+  color: var(--color-accent);
+  display: inline-block;
+  margin-bottom: 0.75rem;
+}
+.dropzone__main {
+  font-size: 1.1rem;
+  margin: 0;
+}
+.dropzone__sub {
+  color: var(--color-text-muted);
+  margin: 0.25rem 0 0;
+}
+.dropzone__browse {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+.dropzone__hint {
+  color: var(--color-text-muted);
+}
+.dropzone__error {
+  color: var(--color-error);
+  font-weight: 600;
+  margin: 0.75rem 0 0;
+}
+.dropzone__area:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Inputs & controls */
+.input,
+.password-field input {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  margin-bottom: 1rem;
+}
+.input:focus {
+  border-color: var(--color-accent);
+  outline: 2px solid var(--color-focus);
+  outline-offset: 0;
+}
+.radio {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  cursor: pointer;
+}
+.radio input {
+  accent-color: var(--color-accent);
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+}
+
+.password-field {
+  margin-top: 1.25rem;
+}
+.password-field label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+.password-hint {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin: -0.5rem 0 1rem;
+}
+
+.options-row {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1.25rem;
+}
+.options-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+.options-fieldset legend,
+.options-scale label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 0.3rem;
+}
+.options-fieldset .radio {
+  padding: 0.2rem 0;
+}
+.options-scale {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 160px;
+}
+.options-scale input[type="range"] {
+  accent-color: var(--color-accent);
+}
+
+.split-options {
+  margin-top: 1.25rem;
+}
+.split-mode {
+  display: grid;
+  gap: 0.75rem;
+}
+.split-count {
+  color: var(--color-text-muted);
+  margin: 1rem 0;
+}
+
+/* Merge / image list */
+.merge-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.25rem 0 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.merge-list__item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+.merge-list__name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.merge-list__meta {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  flex: none;
+}
+.merge-list__btn {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: none;
+}
+.merge-list__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.merge-list__btn--remove {
+  color: var(--color-error);
+}
+
+/* Split / conversion download lists */
+.split-downloads {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.split-downloads li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.split-downloads__name {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Result states */
+.result {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+.result--processing {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-text-muted);
+}
+.result--processing p {
+  margin: 0;
+}
+.result--error p {
+  color: var(--color-error);
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+.result__done {
+  margin-bottom: 1rem;
+  color: var(--color-success);
+  font-weight: 600;
+}
+.result__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex: none;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 1.5s;
+  }
+}

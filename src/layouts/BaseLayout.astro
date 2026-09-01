@@ -1,0 +1,148 @@
+---
+import "../styles/global.css";
+import { ui, type Locale } from "../i18n/ui";
+import { locales } from "../i18n/ui";
+
+interface Props {
+  locale: Locale;
+  title: string;
+  description: string;
+  /** Canonical path, e.g. "/merge-pdf/" */
+  path: string;
+  /** Alternate localized page [locale, path] pairs for hreflang + canonical alt */
+  alternates: { locale: string; path: string }[];
+  /** Open Graph type, default website */
+  ogType?: string;
+  /** Absolute URL to an og image */
+  image?: string;
+  /** Disable indexing (e.g. 404) */
+  noindex?: boolean;
+  /** Schema.org JSON-LD object(s) to embed */
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+}
+
+const {
+  locale,
+  title,
+  description,
+  path,
+  alternates,
+  ogType = "website",
+  image,
+  noindex = false,
+  jsonLd,
+} = Astro.props;
+
+const site = Astro.site!;
+const origin = site.origin;
+const canonical = new URL(path, site).href;
+const ogImage = image ?? new URL("/og-default.png", site).href;
+const t = ui[locale];
+const ogLocale = locale === "de" ? "de_DE" : "en_US";
+const ogLocaleAlt = locale === "de" ? "en_US" : "de_DE";
+
+// hreflang: every alternate plus x-default (default locale).
+const hreflangLinks = [...alternates, { locale: "x-default", path: alternates.find((a) => a.locale === "en")?.path ?? "/" }];
+
+const jsonLdArray = jsonLd
+  ? Array.isArray(jsonLd)
+    ? jsonLd
+    : [jsonLd]
+  : [];
+
+const schemaEntry = jsonLdArray.length
+  ? { "@context": "https://schema.org", "@graph": jsonLdArray }
+  : {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": `${origin}/#organization`,
+          name: t.siteName,
+          url: origin,
+          logo: { "@type": "ImageObject", url: new URL("/og-default.png", site).href },
+          description: t.tagline,
+        },
+        {
+          "@type": "WebSite",
+          "@id": `${origin}/#website`,
+          name: t.siteName,
+          url: origin,
+          description: t.tagline,
+          publisher: { "@id": `${origin}/#organization` },
+          inLanguage: locale === "de" ? "de-DE" : "en-US",
+        },
+      ],
+    };
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <link rel="canonical" href={canonical} />
+    {hreflangLinks.map((alt) => (
+      <link
+        rel="alternate"
+        hreflang={alt.locale}
+        href={new URL(alt.path, site).href}
+      />
+    ))}
+
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%84%3C/text%3E%3C/svg%3E"
+    />
+
+    <meta property="og:type" content={ogType} />
+    <meta property="og:site_name" content={t.siteName} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={ogLocale} />
+    <meta property="og:locale:alternate" content={ogLocaleAlt} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={t.siteName} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <meta name="theme-color" content="#ffffff" />
+
+    <script type="application/ld+json" set:html={JSON.stringify(schemaEntry)} />
+    <style is:global>
+      :root {
+        @media (prefers-reduced-motion: reduce) {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <slot />
+    <style is:global>
+      .skip-link {
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        background: var(--color-accent);
+        color: #fff;
+        padding: 0.6rem 1rem;
+        border-radius: 0 0 var(--radius-sm) 0;
+        z-index: 200;
+      }
+      .skip-link:focus {
+        left: 0;
+      }
+    </style>
+  </body>
+</html>

@@ -1,0 +1,11 @@
+---
+import { getCollection } from "astro:content";
+import HomeLayout from "../../components/HomeLayout.astro";
+
+export async function getStaticPaths() {
+  // Non-default locale homes only: /de/
+  return [{ params: { locale: "de" } }];
+}
+---
+
+<HomeLayout locale="de" />

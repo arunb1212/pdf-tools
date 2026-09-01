@@ -1,0 +1,90 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "./Header.astro";
+import Footer from "./Footer.astro";
+import { ui, locales, type Locale } from "../i18n/ui";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = ui[locale];
+
+const path = "/about/";
+const alternates = [
+  { locale: "en", path: "/about/" },
+  { locale: "de", path: "/de/about/" },
+];
+
+const languagePaths = {
+  en: "/about/",
+  de: "/de/about/",
+};
+
+const jsonLd = [
+  {
+    "@type": "Organization",
+    "@id": `${Astro.site!.origin}/#organization`,
+    name: t.siteName,
+    url: Astro.site!.origin,
+    description: t.tagline,
+  },
+  {
+    "@type": "WebPage",
+    "@id": new URL(path, Astro.site!).href,
+    name: t.aboutTitle,
+    description: t.aboutIntro,
+    inLanguage: locale === "de" ? "de-DE" : "en-US",
+  },
+];
+---
+
+<BaseLayout
+  locale={locale}
+  title={`${t.aboutTitle} — ${t.siteName}`}
+  description={t.aboutIntro}
+  path={path}
+  alternates={alternates}
+  jsonLd={jsonLd}
+>
+  <Header locale={locale} languagePaths={languagePaths} />
+
+  <main id="main-content">
+    <article class="container page">
+      <h1>{t.aboutTitle}</h1>
+      <p class="about__lede">{t.aboutIntro}</p>
+
+      <section class="about__section">
+        <h2>{t.aboutMissionTitle}</h2>
+        <p>{t.aboutMission}</p>
+      </section>
+
+      <section class="about__section">
+        <h2>{t.aboutContactTitle}</h2>
+        <p>{t.aboutContact}</p>
+      </section>
+    </article>
+  </main>
+
+  <Footer locale={locale} />
+</BaseLayout>
+
+<style>
+  .page {
+    max-width: 720px;
+    padding: 3rem 0 2rem;
+    margin: 0 auto;
+  }
+  .about__lede {
+    font-size: 1.15rem;
+    color: var(--color-text-muted);
+  }
+  .about__section {
+    margin-top: 2rem;
+  }
+  .about__section p {
+    color: var(--color-text-muted);
+    max-width: 60ch;
+  }
+</style>

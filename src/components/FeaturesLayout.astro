@@ -1,0 +1,252 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "./Header.astro";
+import Footer from "./Footer.astro";
+import { ui, type Locale } from "../i18n/ui";
+import { features, featuresFaq } from "../data/content";
+import TiltCard from "./react/TiltCard.tsx";
+import FaqAccordion from "./react/FaqAccordion.tsx";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = ui[locale];
+
+const path = "/features/";
+const alternates = [
+  { locale: "en", path: "/features/" },
+  { locale: "de", path: "/de/features/" },
+];
+
+const featureCards = features[locale];
+const faqItems = featuresFaq[locale];
+
+const jsonLd = [
+  {
+    "@type": "WebSite",
+    name: t.siteName,
+    url: Astro.site!.origin,
+    description: t.tagline,
+  },
+  {
+    "@type": "FAQPage",
+    mainEntity: faqItems.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  },
+];
+
+const languagePaths = {
+  en: "/features/",
+  de: "/de/features/",
+};
+---
+
+<BaseLayout
+  locale={locale}
+  title={`${t.featuresTitle} — ${t.siteName}`}
+  description={t.featuresSubtitle}
+  path={path}
+  alternates={alternates}
+  jsonLd={jsonLd}
+>
+  <Header locale={locale} languagePaths={languagePaths} />
+
+  <main id="main-content">
+    <section class="fhero">
+      <div class="container fhero__inner">
+        <span class="fhero__badge">{t.featuresHeroBadge}</span>
+        <h1>{t.featuresTitle}</h1>
+        <p class="fhero__subtitle">{t.featuresSubtitle}</p>
+        <a class="btn btn--primary fhero__cta" href={locale === "en" ? "/#tools" : "/de/#tools"}>
+          {t.featuresCta}
+        </a>
+      </div>
+    </section>
+
+    <section class="ffeatures">
+      <div class="container">
+        <h2>{t.featuresSectionTitle}</h2>
+        <ul class="ffeatures__grid">
+          {featureCards.map((card) => (
+            <li>
+              <TiltCard client:visible {...card} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+
+    <section class="fmarketing">
+      <div class="container fmarketing__grid">
+        <div class="fmarketing__col">
+          <h3>{t.featurePrivacyTitle}</h3>
+          <p>{t.featurePrivacyDesc}</p>
+        </div>
+        <div class="fmarketing__col">
+          <h3>{t.featureSpeedTitle}</h3>
+          <p>{t.featureSpeedDesc}</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="container ffaq">
+      <FaqAccordion client:visible title={t.featureFaqHeading} items={faqItems} />
+    </div>
+  </main>
+
+  <Footer locale={locale} />
+</BaseLayout>
+
+<style>
+  .fhero {
+    padding: 5rem 0 3rem;
+    text-align: center;
+    background:
+      radial-gradient(1200px 500px at 50% -10%, rgba(255, 46, 46, 0.1), transparent 60%),
+      linear-gradient(180deg, var(--color-surface-warm) 0%, var(--color-bg) 100%);
+  }
+  .fhero__inner {
+    max-width: 720px;
+  }
+  .fhero__badge {
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    background: var(--color-accent-tint);
+    color: var(--color-accent);
+    margin-bottom: 1.25rem;
+  }
+  .fhero__subtitle {
+    color: var(--color-text-muted);
+    font-size: 1.15rem;
+    max-width: 60ch;
+    margin: 0 auto 1.5rem;
+  }
+  .fhero__cta {
+    padding: 0.85rem 1.75rem;
+    font-size: 1.05rem;
+  }
+
+  .ffeatures {
+    padding: 3rem 0;
+  }
+  .ffeatures > .container > h2 {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  .ffeatures__grid {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+
+  .tilt-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.75rem;
+    height: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  .tilt-card:hover {
+    border-color: var(--color-accent);
+    box-shadow: var(--shadow-md);
+  }
+  .feature-icon {
+    width: 54px;
+    height: 54px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--color-accent-tint), var(--color-accent-tint-strong));
+    color: var(--color-accent);
+    margin-bottom: 0.75rem;
+    transform: translateZ(30px);
+  }
+  .feature-icon__svg {
+    display: block;
+  }
+  .tilt-card__glow {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-lg);
+    pointer-events: none;
+    background: radial-gradient(300px circle at 50% 0%, rgba(255, 46, 46, 0.12), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .tilt-card:hover .tilt-card__glow {
+    opacity: 1;
+  }
+  .tilt-card h3 {
+    transform: translateZ(20px);
+    font-size: 1.2rem;
+  }
+  .tilt-card p {
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    margin: 0;
+    transform: translateZ(12px);
+  }
+
+  .fmarketing {
+    padding: 2rem 0 3rem;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .fmarketing__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+    max-width: 900px;
+  }
+  .fmarketing__col h3 {
+    color: var(--color-accent);
+  }
+  .fmarketing__col p {
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+
+  .ffaq {
+    padding: 3rem 0;
+  }
+
+  @media (max-width: 900px) {
+    .ffeatures__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 640px) {
+    .ffeatures__grid {
+      grid-template-columns: 1fr;
+    }
+    .fmarketing__grid {
+      grid-template-columns: 1fr;
+    }
+    .fhero {
+      padding: 3rem 0 2rem;
+    }
+  }
+</style>

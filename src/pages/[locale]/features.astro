@@ -1,0 +1,10 @@
+---
+import FeaturesLayout from "../../components/FeaturesLayout.astro";
+
+export async function getStaticPaths() {
+  // Non-default locale features page only: /de/features/
+  return [{ params: { locale: "de" } }];
+}
+---
+
+<FeaturesLayout locale="de" />

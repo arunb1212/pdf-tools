@@ -1,0 +1,19 @@
+---
+import { getCollection } from "astro:content";
+import ToolPageLayout from "../components/ToolPageLayout.astro";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("tools");
+  // Default locale (en) pages, unprefixed: /merge-pdf/, /create-pdf/, etc.
+  // entry.slug is the file path relative to the collection root (e.g. "en/create-pdf"),
+  // so strip the locale directory to use the bare filename as the URL slug.
+  return entries
+    .filter((e) => e.data.locale === "en")
+    .map((entry) => ({
+      params: { slug: entry.slug.split("/").pop()! },
+      props: { entry },
+    }));
+}
+---
+
+<ToolPageLayout entry={Astro.props.entry} locale="en" />

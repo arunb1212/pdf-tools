@@ -1,0 +1,10 @@
+---
+import PrivacyLayout from "../../components/PrivacyLayout.astro";
+
+export async function getStaticPaths() {
+  // Non-default locale privacy page only: /de/privacy/
+  return [{ params: { locale: "de" } }];
+}
+---
+
+<PrivacyLayout locale="de" />
