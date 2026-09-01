@@ -31,9 +31,11 @@ export default defineConfig({
   ],
   vite: {
     optimizeDeps: {
-      exclude: ["pdf-lib", "pdfjs-dist", "jspdf"],
+      include: ["react", "react-dom"],
+      exclude: ["pdf-lib", "pdfjs-dist", "jspdf", "jspdf-autotable"],
     },
     resolve: {
+      dedupe: ["react", "react-dom"],
       alias: {
         // pdf-lib-with-encrypt ships a broken ESM build (pako namespace-import bug).
         // Force the working CJS build (resolved via the package's "main" field).

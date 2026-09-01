@@ -61,6 +61,14 @@ export function parseCsv(text: string): CsvRow {
   return { headers, rows: body };
 }
 
+function breakLongWords(val: string): string {
+  if (!val || typeof val !== "string") return val ?? "";
+  // Insert zero-width space after URL/path delimiters and long unbroken tokens so autoTable wraps them
+  return val
+    .replace(/([\/\?=&_#\.-])/g, "$1\u200B")
+    .replace(/([^\s\u200B]{18})/g, "$1\u200B");
+}
+
 export default function CsvToPdf({ messages }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [state, setState] = useState<"idle" | "processing" | "done" | "error">("idle");
@@ -89,34 +97,61 @@ export default function CsvToPdf({ messages }: Props) {
       const { headers, rows } = parseCsv(text);
       if (headers.length === 0) throw new Error("empty CSV");
 
+      const numCols = headers.length;
+      // Use landscape orientation for tables with more than 4 columns
+      const isLandscape = numCols > 4;
       const { jsPDF } = await loadJsPDF();
-      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-      const { autoTable } = await import("jspdf-autotable");
+      const doc = new jsPDF({
+        orientation: isLandscape ? "landscape" : "portrait",
+        unit: "pt",
+        format: "a4",
+      });
 
-      const body = rows.map((r) => headers.map((_, i) => r[i] ?? ""));
+      const autoTableMod = await import("jspdf-autotable");
+      const autoTableFn = (autoTableMod as any).default || (autoTableMod as any).autoTable;
 
-      autoTable(doc, {
-        head: [headers],
-        body,
-        // Let autotable paginate; add a page-number footer on each page.
-        didDrawPage: () => {
-          doc.setFontSize(7);
-          doc.setTextColor(150);
-          doc.text(
-            `Page ${doc.getNumberOfPages()}`,
-            40,
-            doc.internal.pageSize.getHeight() - 16,
-          );
-        },
+      // Format headers and body with soft word-breaks for URLs and long identifiers
+      const formattedHeaders = headers.map((h) => breakLongWords(h));
+      const formattedBody = rows.map((r) =>
+        headers.map((_, i) => breakLongWords(r[i] ?? ""))
+      );
+
+      const usableWidth = isLandscape ? 842 - 60 : 595 - 60;
+      const minColWidth = Math.max(30, Math.floor(usableWidth / (numCols * 1.5)));
+
+      autoTableFn(doc, {
+        head: [formattedHeaders],
+        body: formattedBody,
+        theme: "striped",
         styles: {
-          fontSize: 8,
-          cellPadding: 4,
+          fontSize: numCols > 8 ? 6.5 : numCols > 5 ? 7.5 : 8.5,
+          cellPadding: { top: 5, right: 4, bottom: 5, left: 4 },
           overflow: "linebreak",
+          valign: "top",
+          minCellWidth: minColWidth,
+          lineColor: [226, 232, 240],
+          lineWidth: 0.5,
+        },
+        headStyles: {
+          fillColor: [30, 41, 59], // Sleek slate navy header
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: numCols > 8 ? 7 : numCols > 5 ? 8 : 9,
           valign: "middle",
         },
-        headStyles: { fillColor: [255, 46, 46], textColor: 255, fontStyle: "bold" },
-        alternateRowStyles: { fillColor: [250, 248, 246] },
-        margin: { left: 40, right: 40, top: 40, bottom: 40 },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252],
+        },
+        margin: { left: 30, right: 30, top: 35, bottom: 35 },
+        didDrawPage: () => {
+          doc.setFontSize(8);
+          doc.setTextColor(148, 163, 184);
+          doc.text(
+            `Page ${doc.getNumberOfPages()}`,
+            30,
+            doc.internal.pageSize.getHeight() - 14,
+          );
+        },
       });
 
       const blob = doc.output("blob");

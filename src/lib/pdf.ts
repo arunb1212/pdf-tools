@@ -56,8 +56,8 @@ export async function loadJsPDF() {
 export async function loadPdfJs() {
   const mod = await import("pdfjs-dist/build/pdf.mjs");
   // Set up a global worker URL so pdf.js can render off-main-thread.
-  const workerMod = await import("pdfjs-dist/build/pdf.worker.mjs");
-  mod.GlobalWorkerOptions.workerSrc = workerMod.default;
+  const workerUrl = await import("pdfjs-dist/build/pdf.worker.mjs?url");
+  mod.GlobalWorkerOptions.workerSrc = workerUrl.default;
   return mod;
 }
 

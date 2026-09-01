@@ -180,13 +180,18 @@ export default function SignPdf({ messages }: Props) {
     setDownloadUrl(null);
 
     try {
-      const arrayBuf = await f.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuf);
-      setRawPdfBytes(bytes);
+      // Inline PDF.js import with proper worker URL setup
+      const pdfjs = await import("pdfjs-dist/build/pdf.mjs");
+      // Use Vite's ?url suffix to get the worker file as a URL string
+      const workerUrl = await import("pdfjs-dist/build/pdf.worker.mjs?url");
+      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl.default;
 
-      const pdfjs = await loadPdfJs();
-      // Pass a clone of the byte buffer to prevent worker detachment
-      const pdf = await pdfjs.getDocument({ data: bytes.slice() }).promise;
+      const data = await f.arrayBuffer();
+      // Keep a separate copy of the bytes for pdf-lib (bake step)
+      // Must copy BEFORE getDocument since it may detach the buffer
+      setRawPdfBytes(new Uint8Array(data.slice(0)));
+
+      const pdf = await pdfjs.getDocument({ data }).promise;
       setPdfDoc(pdf);
       setTotalPages(pdf.numPages);
       setPlaced({ x: 0.5, y: 0.75 });
@@ -532,7 +537,7 @@ export default function SignPdf({ messages }: Props) {
       const pdfjs = await loadPdfJs();
       const { jsPDF } = await loadJsPDF();
       const sourceBytes = rawPdfBytes ? rawPdfBytes.slice() : new Uint8Array(await file.arrayBuffer());
-      const pdf = await pdfjs.getDocument({ data: sourceBytes }).promise;
+      const pdf = await pdfjs.getDocument({ data: sourceBytes.buffer }).promise;
 
       const firstPage = await pdf.getPage(1);
       const firstViewport = firstPage.getViewport({ scale: 1.5 });
@@ -606,238 +611,203 @@ export default function SignPdf({ messages }: Props) {
 
       {file && (
         <div className="sign-editor">
-          {/* Step 1: Create Signature */}
-          <div className="sign-modes" role="tablist">
-            <button
-              type="button"
-              className={`sign-mode-btn ${mode === "draw" ? "is-active" : ""}`}
-              onClick={() => {
-                stopCamera();
-                setMode("draw");
-                setTimeout(initDrawCanvas, 50);
-              }}
-            >
-              ✍️ Draw
-            </button>
-            <button
-              type="button"
-              className={`sign-mode-btn ${mode === "type" ? "is-active" : ""}`}
-              onClick={() => {
-                stopCamera();
-                setMode("type");
-                if (typed) generateTypedSignature(typed, selectedFont);
-              }}
-            >
-              ⌨️ Type
-            </button>
-            <button
-              type="button"
-              className={`sign-mode-btn ${mode === "upload" ? "is-active" : ""}`}
-              onClick={() => {
-                stopCamera();
-                setMode("upload");
-              }}
-            >
-              🖼️ Upload Scan
-            </button>
-            <button
-              type="button"
-              className={`sign-mode-btn ${mode === "camera" ? "is-active" : ""}`}
-              onClick={() => {
-                setMode("camera");
-                startCamera();
-              }}
-            >
-              📷 Camera Scan
-            </button>
-          </div>
+          {/* ── 1. SIGNATURE CREATION OPTIONS (TOP) ── */}
+          <div className="sign-tools-panel" style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+            <div className="sign-tools-summary" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.75rem 1rem", background: "var(--color-surface-warm)", borderBottom: "1px solid var(--color-border)" }}>
+              <span className="sign-tools-title" style={{ fontWeight: 700, fontSize: "1rem" }}>
+                {signatureUrl ? "✍️ Signature Created" : "✍️ Step 1: Create or Choose Your Signature"}
+              </span>
+              {signatureUrl && (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <img src={signatureUrl} alt="Signature" className="sign-tools-preview-img" />
+                  <span className="sign-tools-hint" style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>Active Signature</span>
+                </div>
+              )}
+            </div>
 
-          {/* Mode Panels */}
-          <div className="sign-panel">
-            {mode === "draw" && (
-              <div className="sign-draw">
-                <canvas
-                  ref={drawRef}
-                  className="sign-canvas"
-                  width={500}
-                  height={150}
-                  onPointerDown={(e) => {
-                    e.currentTarget.setPointerCapture(e.pointerId);
-                    startDraw(e);
+            <div className="sign-tools-content">
+              {/* Mode tabs */}
+              <div className="sign-modes" role="tablist">
+                <button
+                  type="button"
+                  className={`sign-mode-btn ${mode === "draw" ? "is-active" : ""}`}
+                  onClick={() => {
+                    stopCamera();
+                    setMode("draw");
+                    setTimeout(initDrawCanvas, 50);
                   }}
-                  onPointerMove={moveDraw}
-                  onPointerUp={endDraw}
-                />
-                <div className="sign-controls-row">
-                  <div className="sign-color-picker">
-                    <span>Ink color:</span>
-                    <button
-                      type="button"
-                      className={`sign-color-dot ${drawColor === "#121111" ? "is-selected" : ""}`}
-                      style={{ background: "#121111" }}
-                      onClick={() => setDrawColor("#121111")}
-                      title="Black ink"
-                    />
-                    <button
-                      type="button"
-                      className={`sign-color-dot ${drawColor === "#0f3d91" ? "is-selected" : ""}`}
-                      style={{ background: "#0f3d91" }}
-                      onClick={() => setDrawColor("#0f3d91")}
-                      title="Blue ink"
-                    />
-                    <button
-                      type="button"
-                      className={`sign-color-dot ${drawColor === "#b30000" ? "is-selected" : ""}`}
-                      style={{ background: "#b30000" }}
-                      onClick={() => setDrawColor("#b30000")}
-                      title="Red ink"
-                    />
-                  </div>
-                  <button type="button" className="btn btn--secondary" onClick={initDrawCanvas}>
-                    Clear Drawing
-                  </button>
-                </div>
+                >
+                  ✍️ Draw
+                </button>
+                <button
+                  type="button"
+                  className={`sign-mode-btn ${mode === "type" ? "is-active" : ""}`}
+                  onClick={() => {
+                    stopCamera();
+                    setMode("type");
+                    if (typed) generateTypedSignature(typed, selectedFont);
+                  }}
+                >
+                  ⌨️ Type
+                </button>
+                <button
+                  type="button"
+                  className={`sign-mode-btn ${mode === "upload" ? "is-active" : ""}`}
+                  onClick={() => {
+                    stopCamera();
+                    setMode("upload");
+                  }}
+                >
+                  🖼️ Upload Scan
+                </button>
+                <button
+                  type="button"
+                  className={`sign-mode-btn ${mode === "camera" ? "is-active" : ""}`}
+                  onClick={() => {
+                    setMode("camera");
+                    startCamera();
+                  }}
+                >
+                  📷 Camera Scan
+                </button>
               </div>
-            )}
 
-            {mode === "type" && (
-              <div className="sign-type">
-                <div className="sign-type-input-row">
-                  <input
-                    className="input"
-                    type="text"
-                    placeholder="Type your name..."
-                    value={typed}
-                    onChange={(e) => {
-                      setTyped(e.target.value);
-                      generateTypedSignature(e.target.value, selectedFont);
-                    }}
-                    disabled={state === "processing"}
-                  />
-                  <div className="sign-color-picker">
-                    <button
-                      type="button"
-                      className={`sign-color-dot ${drawColor === "#121111" ? "is-selected" : ""}`}
-                      style={{ background: "#121111" }}
-                      onClick={() => {
-                        setDrawColor("#121111");
-                        if (typed) generateTypedSignature(typed, selectedFont);
+              {/* Mode panels */}
+              <div className="sign-panel">
+                {mode === "draw" && (
+                  <div className="sign-draw">
+                    <canvas
+                      ref={drawRef}
+                      className="sign-canvas"
+                      width={500}
+                      height={150}
+                      onPointerDown={(e) => {
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                        startDraw(e);
                       }}
-                      title="Black"
+                      onPointerMove={moveDraw}
+                      onPointerUp={endDraw}
                     />
-                    <button
-                      type="button"
-                      className={`sign-color-dot ${drawColor === "#0f3d91" ? "is-selected" : ""}`}
-                      style={{ background: "#0f3d91" }}
-                      onClick={() => {
-                        setDrawColor("#0f3d91");
-                        if (typed) generateTypedSignature(typed, selectedFont);
-                      }}
-                      title="Blue"
-                    />
-                  </div>
-                </div>
-
-                <div className="sign-font-choices">
-                  <div
-                    className={`sign-font-card ${selectedFont === "cursive" ? "is-active" : ""}`}
-                    style={{ fontFamily: "'Brush Script MT', 'Dancing Script', cursive" }}
-                    onClick={() => {
-                      setSelectedFont("cursive");
-                      generateTypedSignature(typed || "Signature", "cursive");
-                    }}
-                  >
-                    {typed || "Signature"}
-                  </div>
-                  <div
-                    className={`sign-font-card ${selectedFont === "brush" ? "is-active" : ""}`}
-                    style={{ fontFamily: "'Segoe Script', 'Snell Roundhand', cursive" }}
-                    onClick={() => {
-                      setSelectedFont("brush");
-                      generateTypedSignature(typed || "Signature", "brush");
-                    }}
-                  >
-                    {typed || "Signature"}
-                  </div>
-                  <div
-                    className={`sign-font-card ${selectedFont === "serif" ? "is-active" : ""}`}
-                    style={{ fontFamily: "Georgia, serif", fontStyle: "italic" }}
-                    onClick={() => {
-                      setSelectedFont("serif");
-                      generateTypedSignature(typed || "Signature", "serif");
-                    }}
-                  >
-                    {typed || "Signature"}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {mode === "upload" && (
-              <div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={handleImageUpload}
-                />
-                <div className="sign-upload-box" onClick={() => fileInputRef.current?.click()}>
-                  <span style={{ fontSize: "2rem" }}>📄</span>
-                  <strong>Choose a photo of your signature on white paper</strong>
-                  <p>PNG, JPG, or WebP. The white paper background will be automatically removed.</p>
-                </div>
-
-                {rawImageCanvas && (
-                  <div className="sign-threshold-control">
-                    <span>Paper Background Filter:</span>
-                    <input
-                      type="range"
-                      min="120"
-                      max="245"
-                      value={threshold}
-                      onChange={(e) => updateThreshold(Number(e.target.value))}
-                    />
-                    <span>{threshold}</span>
+                    <div className="sign-controls-row">
+                      <div className="sign-color-picker">
+                        <span>Ink color:</span>
+                        <button
+                          type="button"
+                          className={`sign-color-dot ${drawColor === "#121111" ? "is-selected" : ""}`}
+                          style={{ background: "#121111" }}
+                          onClick={() => setDrawColor("#121111")}
+                          title="Black ink"
+                        />
+                        <button
+                          type="button"
+                          className={`sign-color-dot ${drawColor === "#0f3d91" ? "is-selected" : ""}`}
+                          style={{ background: "#0f3d91" }}
+                          onClick={() => setDrawColor("#0f3d91")}
+                          title="Blue ink"
+                        />
+                        <button
+                          type="button"
+                          className={`sign-color-dot ${drawColor === "#b30000" ? "is-selected" : ""}`}
+                          style={{ background: "#b30000" }}
+                          onClick={() => setDrawColor("#b30000")}
+                          title="Red ink"
+                        />
+                      </div>
+                      <button type="button" className="btn btn--secondary" onClick={initDrawCanvas}>
+                        Clear Drawing
+                      </button>
+                    </div>
                   </div>
                 )}
-              </div>
-            )}
 
-            {mode === "camera" && (
-              <div>
-                {cameraError ? (
-                  <div style={{ textAlign: "center", color: "var(--color-error)", padding: "1rem" }}>
-                    <p>{cameraError}</p>
-                    <button type="button" className="btn btn--secondary" onClick={() => setMode("upload")}>
-                      Use Image Upload Instead
-                    </button>
-                  </div>
-                ) : cameraActive ? (
-                  <div>
-                    <div className="sign-camera-view">
-                      <video ref={videoRef} autoPlay playsInline muted className="sign-camera-video" />
-                      <div className="sign-camera-guide">
-                        <span>Hold signature on white paper inside guide</span>
+                {mode === "type" && (
+                  <div className="sign-type">
+                    <div className="sign-type-input-row">
+                      <input
+                        className="input"
+                        type="text"
+                        placeholder="Type your name..."
+                        value={typed}
+                        onChange={(e) => {
+                          setTyped(e.target.value);
+                          generateTypedSignature(e.target.value, selectedFont);
+                        }}
+                        disabled={state === "processing"}
+                      />
+                      <div className="sign-color-picker">
+                        <button
+                          type="button"
+                          className={`sign-color-dot ${drawColor === "#121111" ? "is-selected" : ""}`}
+                          style={{ background: "#121111" }}
+                          onClick={() => {
+                            setDrawColor("#121111");
+                            if (typed) generateTypedSignature(typed, selectedFont);
+                          }}
+                          title="Black"
+                        />
+                        <button
+                          type="button"
+                          className={`sign-color-dot ${drawColor === "#0f3d91" ? "is-selected" : ""}`}
+                          style={{ background: "#0f3d91" }}
+                          onClick={() => {
+                            setDrawColor("#0f3d91");
+                            if (typed) generateTypedSignature(typed, selectedFont);
+                          }}
+                          title="Blue"
+                        />
                       </div>
                     </div>
-                    <div className="sign-camera-actions">
-                      <button type="button" className="btn btn--primary" onClick={captureCameraSnapshot}>
-                        📸 Capture Signature
-                      </button>
-                      <button type="button" className="btn btn--secondary" onClick={stopCamera}>
-                        Cancel
-                      </button>
+
+                    <div className="sign-font-choices">
+                      <div
+                        className={`sign-font-card ${selectedFont === "cursive" ? "is-active" : ""}`}
+                        style={{ fontFamily: "'Brush Script MT', 'Dancing Script', cursive" }}
+                        onClick={() => {
+                          setSelectedFont("cursive");
+                          generateTypedSignature(typed || "Signature", "cursive");
+                        }}
+                      >
+                        {typed || "Signature"}
+                      </div>
+                      <div
+                        className={`sign-font-card ${selectedFont === "brush" ? "is-active" : ""}`}
+                        style={{ fontFamily: "'Segoe Script', 'Snell Roundhand', cursive" }}
+                        onClick={() => {
+                          setSelectedFont("brush");
+                          generateTypedSignature(typed || "Signature", "brush");
+                        }}
+                      >
+                        {typed || "Signature"}
+                      </div>
+                      <div
+                        className={`sign-font-card ${selectedFont === "serif" ? "is-active" : ""}`}
+                        style={{ fontFamily: "Georgia, serif", fontStyle: "italic" }}
+                        onClick={() => {
+                          setSelectedFont("serif");
+                          generateTypedSignature(typed || "Signature", "serif");
+                        }}
+                      >
+                        {typed || "Signature"}
+                      </div>
                     </div>
                   </div>
-                ) : (
+                )}
+
+                {mode === "upload" && (
                   <div>
-                    <div style={{ textAlign: "center", padding: "1rem" }}>
-                      <p>Signature captured from camera!</p>
-                      <button type="button" className="btn btn--secondary" onClick={startCamera}>
-                        📷 Retake Snapshot
-                      </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={handleImageUpload}
+                    />
+                    <div className="sign-upload-box" onClick={() => fileInputRef.current?.click()}>
+                      <span style={{ fontSize: "2rem" }}>📄</span>
+                      <strong>Choose a photo of your signature on white paper</strong>
+                      <p>PNG, JPG, or WebP. The white paper background will be automatically removed.</p>
                     </div>
+
                     {rawImageCanvas && (
                       <div className="sign-threshold-control">
                         <span>Paper Background Filter:</span>
@@ -853,67 +823,103 @@ export default function SignPdf({ messages }: Props) {
                     )}
                   </div>
                 )}
+
+                {mode === "camera" && (
+                  <div>
+                    {cameraError ? (
+                      <div style={{ textAlign: "center", color: "var(--color-error)", padding: "1rem" }}>
+                        <p>{cameraError}</p>
+                        <button type="button" className="btn btn--secondary" onClick={() => setMode("upload")}>
+                          Use Image Upload Instead
+                        </button>
+                      </div>
+                    ) : cameraActive ? (
+                      <div>
+                        <div className="sign-camera-view">
+                          <video ref={videoRef} autoPlay playsInline muted className="sign-camera-video" />
+                          <div className="sign-camera-guide">
+                            <span>Hold signature on white paper inside guide</span>
+                          </div>
+                        </div>
+                        <div className="sign-camera-actions">
+                          <button type="button" className="btn btn--primary" onClick={captureCameraSnapshot}>
+                            📸 Capture Signature
+                          </button>
+                          <button type="button" className="btn btn--secondary" onClick={stopCamera}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ textAlign: "center", padding: "1rem" }}>
+                          <p>Signature captured from camera!</p>
+                          <button type="button" className="btn btn--secondary" onClick={startCamera}>
+                            📷 Retake Snapshot
+                          </button>
+                        </div>
+                        {rawImageCanvas && (
+                          <div className="sign-threshold-control">
+                            <span>Paper Background Filter:</span>
+                            <input
+                              type="range"
+                              min="120"
+                              max="245"
+                              value={threshold}
+                              onChange={(e) => updateThreshold(Number(e.target.value))}
+                            />
+                            <span>{threshold}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Step 2: Live PDF Preview & Movable Signature on Document */}
-          <div className="sign-preview-wrap">
-            <div className="sign-preview-header">
-              {signatureUrl ? (
-                <div className="sign-extracted-card">
-                  <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--color-text-muted)" }}>
-                    Signature:
-                  </span>
-                  <img src={signatureUrl} alt="Signature" className="sign-extracted-img" />
-                </div>
-              ) : (
-                <div style={{ fontSize: "0.9rem", color: "var(--color-text-muted)" }}>
-                  ✍️ Create or upload your signature above to place it on the document.
-                </div>
-              )}
-
-              <div className="sign-pages-nav">
-                {signatureUrl && (
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", marginRight: "0.5rem" }}>
-                    <span style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>Size:</span>
-                    <input
-                      type="range"
-                      min="10"
-                      max="65"
-                      value={sigScale}
-                      onChange={(e) => setSigScale(Number(e.target.value))}
-                      style={{ width: "85px" }}
-                    />
-                  </label>
-                )}
-
+          {/* ── 2. DOCUMENT PREVIEW WITH DRAGGABLE SIGNATURE ── */}
+          <div className="sign-doc-area">
+            {/* Page navigation toolbar */}
+            <div className="sign-doc-toolbar">
+              <div className="sign-doc-toolbar-left">
                 <button
                   type="button"
-                  className="btn btn--secondary"
+                  className="btn btn--secondary btn--sm"
                   disabled={pageNum <= 1}
                   onClick={() => setPageNum((p) => p - 1)}
                 >
                   ‹ Prev
                 </button>
-                <span>
+                <span className="sign-page-indicator">
                   Page {pageNum} / {totalPages}
                 </span>
                 <button
                   type="button"
-                  className="btn btn--secondary"
+                  className="btn btn--secondary btn--sm"
                   disabled={pageNum >= totalPages}
                   onClick={() => setPageNum((p) => p + 1)}
                 >
                   Next ›
                 </button>
               </div>
+
+              {signatureUrl && (
+                <label className="sign-size-control">
+                  <span>Signature Size:</span>
+                  <input
+                    type="range"
+                    min="10"
+                    max="65"
+                    value={sigScale}
+                    onChange={(e) => setSigScale(Number(e.target.value))}
+                  />
+                </label>
+              )}
             </div>
 
-            <p className="sign-hint">
-              ✋ <strong>Drag & move</strong> the signature directly onto the PDF line, or click anywhere on the page to reposition.
-            </p>
-
+            {/* The PDF Document Canvas */}
             <div className="sign-page-wrap" ref={pageWrapRef}>
               <div className="sign-page-container">
                 <canvas
@@ -956,18 +962,34 @@ export default function SignPdf({ messages }: Props) {
               </div>
             </div>
 
-            {signatureUrl && state !== "done" && (
-              <button
-                type="button"
-                className="btn btn--primary btn--block"
-                disabled={state === "processing"}
-                onClick={bake}
-                style={{ padding: "0.9rem", fontSize: "1.05rem", marginTop: "0.75rem" }}
-              >
-                {state === "processing" ? messages.processing : `Download Signed PDF`}
-              </button>
+            {!signatureUrl && (
+              <p className="sign-hint">
+                👆 Create or upload your signature above, then click anywhere on the document to place it.
+              </p>
+            )}
+            {signatureUrl && !placed && (
+              <p className="sign-hint">
+                👆 Click anywhere on the document above to place your signature.
+              </p>
+            )}
+            {signatureUrl && placed && (
+              <p className="sign-hint">
+                ✋ <strong>Drag & move</strong> the signature directly on the document, or click to reposition. Use the resize handle (↘) in the corner to change size.
+              </p>
             )}
           </div>
+
+          {/* ── 3. DOWNLOAD ACTION ── */}
+          {signatureUrl && placed && state !== "done" && (
+            <button
+              type="button"
+              className="btn btn--primary btn--block sign-download-btn"
+              disabled={state === "processing"}
+              onClick={bake}
+            >
+              {state === "processing" ? messages.processing : "📥 Download Signed PDF"}
+            </button>
+          )}
 
           <p className="legal-note">{messages.legalNote}</p>
         </div>

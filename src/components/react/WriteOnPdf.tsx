@@ -58,8 +58,8 @@ export default function WriteOnPdf({ messages }: Props) {
     setState("idle");
     try {
       const pdfjs = await import("pdfjs-dist/build/pdf.mjs");
-      const workerMod = await import("pdfjs-dist/build/pdf.worker.mjs");
-      pdfjs.GlobalWorkerOptions.workerSrc = workerMod.default;
+      const workerUrl = await import("pdfjs-dist/build/pdf.worker.mjs?url");
+      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl.default;
       const data = await f.arrayBuffer();
       const pdf = await pdfjs.getDocument({ data }).promise;
       setTotalPages(pdf.numPages);
@@ -112,8 +112,8 @@ export default function WriteOnPdf({ messages }: Props) {
     setState("processing");
     try {
       const pdfjs = await import("pdfjs-dist/build/pdf.mjs");
-      const workerMod = await import("pdfjs-dist/build/pdf.worker.mjs");
-      pdfjs.GlobalWorkerOptions.workerSrc = workerMod.default;
+      const workerUrl = await import("pdfjs-dist/build/pdf.worker.mjs?url");
+      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl.default;
       const { jsPDF } = await loadJsPDF();
       const data = await file.arrayBuffer();
       const pdf = await pdfjs.getDocument({ data }).promise;
