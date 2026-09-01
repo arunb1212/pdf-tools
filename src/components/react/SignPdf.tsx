@@ -391,14 +391,19 @@ export default function SignPdf({ messages }: Props) {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
     const y = (e.clientY - rect.top) / rect.height;
+    
+    // Clamp so the signature doesn't stick out of the PDF page
+    const halfWidthRatio = (sigScale / 100) / 2;
+    const halfHeightRatio = halfWidthRatio * 0.45; // estimated signature aspect ratio
+    
     setPlaced({
-      x: Math.max(0.05, Math.min(0.95, x)),
-      y: Math.max(0.05, Math.min(0.95, y)),
+      x: Math.max(halfWidthRatio, Math.min(1 - halfWidthRatio, x)),
+      y: Math.max(halfHeightRatio, Math.min(1 - halfHeightRatio, y)),
     });
     setPlacedPage(pageNum);
   }
 
-  // Drag signature box directly on PDF
+  // Drag signature box directly on PDF document
   function handleMarkerPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     e.stopPropagation();
     const marker = e.currentTarget;
@@ -408,18 +413,28 @@ export default function SignPdf({ messages }: Props) {
     const canvas = pageCanvasRef.current;
     if (!canvas) return;
     const canvasRect = canvas.getBoundingClientRect();
+    const markerRect = marker.getBoundingClientRect();
 
     const startClientX = e.clientX;
     const startClientY = e.clientY;
     const initialX = placed ? placed.x : 0.5;
     const initialY = placed ? placed.y : 0.82;
 
+    const halfW = (markerRect.width / 2) / canvasRect.width;
+    const halfH = (markerRect.height / 2) / canvasRect.height;
+
     function onPointerMove(ev: PointerEvent) {
       const deltaX = (ev.clientX - startClientX) / canvasRect.width;
       const deltaY = (ev.clientY - startClientY) / canvasRect.height;
-      const newX = Math.max(0.05, Math.min(0.95, initialX + deltaX));
-      const newY = Math.max(0.05, Math.min(0.95, initialY + deltaY));
-      setPlaced({ x: newX, y: newY });
+
+      const rawX = initialX + deltaX;
+      const rawY = initialY + deltaY;
+
+      // Confine strictly inside the PDF page boundaries
+      const clampedX = Math.max(halfW, Math.min(1 - halfW, rawX));
+      const clampedY = Math.max(halfH, Math.min(1 - halfH, rawY));
+
+      setPlaced({ x: clampedX, y: clampedY });
       setPlacedPage(pageNum);
     }
 
@@ -848,43 +863,45 @@ export default function SignPdf({ messages }: Props) {
             </p>
 
             <div className="sign-page-wrap" ref={pageWrapRef}>
-              <canvas
-                ref={pageCanvasRef}
-                className="sign-page"
-                onClick={handleCanvasClick}
-                style={{ cursor: signatureUrl ? "crosshair" : "default" }}
-              />
+              <div className="sign-page-container">
+                <canvas
+                  ref={pageCanvasRef}
+                  className="sign-page"
+                  onClick={handleCanvasClick}
+                  style={{ cursor: signatureUrl ? "crosshair" : "default" }}
+                />
 
-              {signatureUrl && placed && placedPage === pageNum && (
-                <div
-                  className={`sign-place-marker ${isDragging ? "is-dragging" : ""}`}
-                  style={{
-                    left: `${placed.x * 100}%`,
-                    top: `${placed.y * 100}%`,
-                    width: `${sigScale}%`,
-                  }}
-                  onPointerDown={handleMarkerPointerDown}
-                >
-                  <span className="sign-marker-badge">✋ Drag to move</span>
-                  <button
-                    type="button"
-                    className="sign-delete-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPlaced(null);
-                    }}
-                    title="Remove signature from page"
-                  >
-                    ×
-                  </button>
-                  <img src={signatureUrl} alt="" />
+                {signatureUrl && placed && placedPage === pageNum && (
                   <div
-                    className="sign-resize-handle"
-                    onPointerDown={handleResizePointerDown}
-                    title="Drag corner to resize"
-                  />
-                </div>
-              )}
+                    className={`sign-place-marker ${isDragging ? "is-dragging" : ""}`}
+                    style={{
+                      left: `${placed.x * 100}%`,
+                      top: `${placed.y * 100}%`,
+                      width: `${sigScale}%`,
+                    }}
+                    onPointerDown={handleMarkerPointerDown}
+                  >
+                    <span className="sign-marker-badge">✋ Drag to move</span>
+                    <button
+                      type="button"
+                      className="sign-delete-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPlaced(null);
+                      }}
+                      title="Remove signature from page"
+                    >
+                      ×
+                    </button>
+                    <img src={signatureUrl} alt="" />
+                    <div
+                      className="sign-resize-handle"
+                      onPointerDown={handleResizePointerDown}
+                      title="Drag corner to resize"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             {signatureUrl && state !== "done" && (
