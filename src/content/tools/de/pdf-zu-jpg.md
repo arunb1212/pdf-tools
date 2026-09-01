@@ -7,6 +7,10 @@ slug: "pdf-zu-jpg"
 title: "PDF zu JPG — PDF-Seiten in Bilder umwandeln, kostenlos und privat"
 shortTitle: "PDF zu JPG"
 description: "Wandle jede Seite eines PDFs in ein JPG- oder PNG-Bild um. Lokal in deinem Browser gerendert — kein Upload, keine Wasserzeichen, kostenlos."
+steps:
+  - "Füge das PDF hinzu, das du umwandeln möchtest."
+  - "Wähle JPG oder PNG und stelle die Qualität mit dem Regler ein."
+  - "Klicke auf Herunterladen, um ein Bild für jede Seite zu erhalten."
 faq:
   - q: "Welche Bildformate werden unterstützt?"
     a: "Du kannst jede Seite als JPG oder PNG ausgeben und die Rendering-Qualität wählen."

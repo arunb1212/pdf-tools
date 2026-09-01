@@ -6,6 +6,10 @@ processing: "client"
 title: "Write on PDF — add text to any PDF, free and private"
 shortTitle: "Write on PDF"
 description: "Add text boxes anywhere on your PDF pages. Click to place, type, and download — all in your browser, with no upload and no watermarks."
+steps:
+  - "Add the PDF you want to annotate."
+  - "Click anywhere on a page to drop a text box, then type your text."
+  - "Adjust the size and color of the selected box, then click Download."
 faq:
   - q: "Can I add multiple text boxes?"
     a: "Yes. Click anywhere on a page to add a new text box, then size and recolor it to fit your layout."

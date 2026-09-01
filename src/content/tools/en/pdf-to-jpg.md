@@ -7,6 +7,10 @@ slug: "pdf-to-jpg"
 title: "PDF to JPG — convert PDF pages to images, free and private"
 shortTitle: "PDF to JPG"
 description: "Convert each page of a PDF to a JPG or PNG image. Rendered locally in your browser — no upload, no watermarks, free."
+steps:
+  - "Add the PDF you want to convert."
+  - "Choose JPG or PNG, and set the quality with the slider."
+  - "Click Download to get an image for every page."
 faq:
   - q: "What image formats are supported?"
     a: "You can output each page as a JPG or a PNG, and choose the rendering quality."

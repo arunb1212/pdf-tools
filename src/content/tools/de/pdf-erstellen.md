@@ -6,6 +6,10 @@ processing: "client"
 title: "PDF erstellen — ein PDF von Grund auf erstellen, kostenlos"
 shortTitle: "PDF erstellen"
 description: "Erstelle ein einfaches PDF von Grund auf — ein leeres Dokument, einen Brief oder einen Rechnungskopf. Vollständig in deinem Browser, ohne Anmeldung."
+steps:
+  - "Wähle ein Werkzeug — Zeichnen, Text, Linie oder Bild."
+  - "Zeichne, platziere Text (mit Fett/Unterstrichen), füge Linien hinzu oder setze ein Bild auf die leere Seite."
+  - "Klicke auf Herunterladen, um deine Zeichenfläche in ein PDF umzuwandeln."
 faq:
   - q: "Was kann ich erstellen?"
     a: "Starte mit einer leeren Seite, einem Brief-Layout oder einem Rechnungskopf, und füge dann deine eigenen Textzeilen hinzu, bearbeite und formatiere sie."

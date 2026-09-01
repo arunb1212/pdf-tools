@@ -13,6 +13,8 @@ const tools = defineCollection({
     title: z.string(),
     shortTitle: z.string(),
     description: z.string(),
+    /** Numbered how-to steps for the "How to use" section. */
+    steps: z.array(z.string()).default([]),
     faq: z.array(z.object({ q: z.string(), a: z.string() })).optional(),
   }),
 });

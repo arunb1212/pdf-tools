@@ -7,6 +7,10 @@ slug: "merge-pdf"
 title: "Merge PDF — combine PDFs online, no upload"
 shortTitle: "Merge PDF"
 description: "Combine multiple PDF files into one document for free. Merge, reorder and download — right in your browser. Your files never leave your device."
+steps:
+  - "Add two or more PDF files by dragging them into the box or clicking to browse."
+  - "Reorder the files using the up and down arrows so they appear in the right order."
+  - "Click Download to merge everything into a single PDF, ready to share."
 faq:
   - q: "Is merging PDFs really private?"
     a: "Yes. The merge happens entirely in your browser using pdf-lib. Your files are never uploaded to a server."

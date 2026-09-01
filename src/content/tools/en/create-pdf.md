@@ -6,6 +6,10 @@ processing: "client"
 title: "Create PDF — build a PDF from scratch, free online"
 shortTitle: "Create PDF"
 description: "Create a simple PDF from scratch — a blank document, a letter, or an invoice header. Built entirely in your browser with no sign-up."
+steps:
+  - "Pick a tool — Paint, Text, Line, or Image."
+  - "Draw, place text (toggle Bold/Underline), add lines, or insert an image on the blank page."
+  - "Click Download to turn your canvas into a PDF."
 faq:
   - q: "What can I create?"
     a: "Start from a blank page, a letter layout, or an invoice header, then add, edit, and format your own lines of text."

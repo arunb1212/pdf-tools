@@ -6,6 +6,10 @@ processing: "client"
 title: "CSV to PDF — convert spreadsheets to PDF tables, free"
 shortTitle: "CSV to PDF"
 description: "Turn CSV data into a clean, formatted PDF table. Processing is entirely client-side in your browser — no upload, no watermarks, free."
+steps:
+  - "Add your .csv file."
+  - "Review the parsed columns and rows that appear below."
+  - "Click Download to get a formatted PDF table of your data."
 faq:
   - q: "Is my CSV data uploaded anywhere?"
     a: "No. Your CSV is parsed and converted to a PDF entirely in your browser using jsPDF."

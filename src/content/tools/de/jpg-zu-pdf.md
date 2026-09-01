@@ -7,6 +7,10 @@ slug: "jpg-zu-pdf"
 title: "JPG zu PDF — Bilder in ein PDF umwandeln, kostenlos und privat"
 shortTitle: "JPG zu PDF"
 description: "Wandle ein oder mehrere Bilder (JPG, PNG u. a.) in ein einzelnes PDF um. Alles passiert in deinem Browser — kein Upload, kein Wasserzeichen."
+steps:
+  - "Füge ein oder mehrere Bilder hinzu (JPG, PNG, WebP, GIF, BMP)."
+  - "Entferne Bilder, die du nicht möchtest, aus der Liste."
+  - "Klicke auf Herunterladen, um sie in einem einzigen A4-PDF zusammenzuführen, ein Bild pro Seite."
 faq:
   - q: "Welche Bildtypen kann ich umwandeln?"
     a: "Jedes gängige Bildformat, das dein Browser lesen kann — JPG, PNG, WebP, GIF, BMP und mehr."

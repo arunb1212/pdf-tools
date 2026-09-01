@@ -6,6 +6,10 @@ processing: "client"
 title: "CSV zu PDF — Tabellen als PDF umwandeln, kostenlos"
 shortTitle: "CSV zu PDF"
 description: "CSV-Daten in eine saubere, formatierte PDF-Tabelle umwandeln. Die Verarbeitung erfolgt vollständig clientseitig in deinem Browser — kein Upload, keine Wasserzeichen, kostenlos."
+steps:
+  - "Füge deine .csv-Datei hinzu."
+  - "Prüfe die Spalten und Zeilen, die unten erscheinen."
+  - "Klicke auf Herunterladen, um eine formatierte PDF-Tabelle deiner Daten zu erhalten."
 faq:
   - q: "Werden meine CSV-Daten hochgeladen?"
     a: "Nein. Deine CSV wird vollständig in deinem Browser mit jsPDF geparst und in ein PDF umgewandelt."

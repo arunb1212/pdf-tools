@@ -7,6 +7,10 @@ slug: "pdf-teilen"
 title: "PDF teilen — Seiten extrahieren oder in separate Dateien aufteilen, kostenlos"
 shortTitle: "PDF teilen"
 description: "Ein PDF in einzelne Seiten aufteilen oder eigene Seitenbereiche extrahieren. Kostenlos, privat und vollständig in deinem Browser verarbeitet — kein Upload nötig."
+steps:
+  - "Füge das PDF hinzu, das du aufteilen möchtest."
+  - "Wähle, ob du Seitenbereiche (z. B. 1-3,5) extrahieren oder eine PDF pro Seite erstellen möchtest."
+  - "Klicke auf Herunterladen — du erhältst die extrahierten Seiten oder eine Datei pro Seite."
 faq:
   - q: "Welche Seitenbereiche kann ich extrahieren?"
     a: "Du kannst Bereiche wie „1-3“, einzelne Seiten wie „5“ oder eine Mischung wie „1-3,5,7-9“ angeben. Seiten sind ab 1 nummeriert."

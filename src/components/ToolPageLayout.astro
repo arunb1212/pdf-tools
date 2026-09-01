@@ -161,7 +161,15 @@ const isBuilt = [
       <div class="tool-page__body">
         <h2>{t.howToTitle}</h2>
         <div class="tool-content__body">
-          <p>{data.description}</p>
+          {data.steps.length > 0 ? (
+            <ol class="howto-steps">
+              {data.steps.map((step) => (
+                <li>{step}</li>
+              ))}
+            </ol>
+          ) : (
+            <p>{data.description}</p>
+          )}
         </div>
 
         {data.faq && (

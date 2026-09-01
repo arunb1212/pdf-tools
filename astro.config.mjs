@@ -7,7 +7,7 @@ const require = createRequire(import.meta.url);
 
 // https://astro.build/config
 export default defineConfig({
-  site: "https://pdf-tools.example.com",
+  site: "https://pdf-tools-lemon-nine.vercel.app",
   trailingSlash: "always",
   i18n: {
     defaultLocale: "en",

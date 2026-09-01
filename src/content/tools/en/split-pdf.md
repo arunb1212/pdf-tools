@@ -7,6 +7,10 @@ slug: "split-pdf"
 title: "Split PDF — extract pages or split into separate files, free"
 shortTitle: "Split PDF"
 description: "Split a PDF into single pages or extract custom page ranges. Free, private, and processed entirely in your browser — no upload required."
+steps:
+  - "Add the PDF you want to split."
+  - "Choose to extract page ranges (e.g. 1-3,5) or split into one PDF per page."
+  - "Click Download — you'll get the extracted pages or a file per page."
 faq:
   - q: "What page ranges can I extract?"
     a: "You can use ranges like \"1-3\", single pages like \"5\", or a mix like \"1-3,5,7-9\". Pages are 1-indexed."

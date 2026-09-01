@@ -7,6 +7,10 @@ slug: "unlock-pdf"
 title: "Unlock PDF — remove a password, free and in your browser"
 shortTitle: "Unlock PDF"
 description: "Remove the password from a PDF you have the key for. Processing happens locally — your file and password never leave your device."
+steps:
+  - "Add the password-protected PDF."
+  - "Enter the password that was used to lock it."
+  - "Click Download to get an unlocked copy you can open freely."
 faq:
   - q: "Do you store my password?"
     a: "No. The password is only held in memory while your file is unlocked locally in the browser."

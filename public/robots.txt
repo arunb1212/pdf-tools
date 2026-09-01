@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 Disallow: /api/
-Sitemap: https://pdf-tools.example.com/sitemap-index.xml
+Sitemap: https://pdf-tools-lemon-nine.vercel.app/sitemap-index.xml

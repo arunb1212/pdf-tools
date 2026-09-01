@@ -7,6 +7,10 @@ slug: "pdf-entsperren"
 title: "PDF entsperren — Passwort entfernen, kostenlos und im Browser"
 shortTitle: "PDF entsperren"
 description: "Entferne das Passwort von einem PDF, für das du den Schlüssel hast. Die Verarbeitung läuft lokal — deine Datei und dein Passwort verlassen dein Gerät nie."
+steps:
+  - "Füge das passwortgeschützte PDF hinzu."
+  - "Gib das Passwort ein, mit dem es gesperrt wurde."
+  - "Klicke auf Herunterladen, um eine entsperrte Kopie zu erhalten, die du frei öffnen kannst."
 faq:
   - q: "Speicherst du mein Passwort?"
     a: "Nein. Das Passwort wird nur im Speicher gehalten, während deine Datei lokal im Browser entsperrt wird."

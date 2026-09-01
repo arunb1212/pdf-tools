@@ -6,6 +6,10 @@ processing: "client"
 title: "PDF signieren — Signatur zeichnen, tippen und platzieren, kostenlos"
 shortTitle: "PDF signieren"
 description: "Zeichne oder tippe deine Signatur und platziere sie auf deinem PDF. Alles läuft in deinem Browser. Hinweis: Dies ist ein einfaches elektronisches Signierwerkzeug, keine zertifizierte digitale Signatur."
+steps:
+  - "Füge das PDF hinzu, das du signieren möchtest."
+  - "Zeichne deine Signatur oder tippe deinen Namen, um sie zu erstellen."
+  - "Klicke auf die Stelle im Dokument, an der die Signatur erscheinen soll, und klicke dann auf Herunterladen."
 faq:
   - q: "Ist das eine rechtlich verbindliche digitale Signatur?"
     a: "Nein. Dies ist ein einfaches E-Signatur-Tool (zeichnen/tippen/platzieren). Es ist keine zertifizierte, rechtlich verbindliche digitale Signatur nach eIDAS oder ESIGN."

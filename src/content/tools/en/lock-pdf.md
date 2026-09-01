@@ -7,6 +7,10 @@ slug: "lock-pdf"
 title: "Lock PDF — add a password to a PDF, free and private"
 shortTitle: "Lock PDF"
 description: "Protect a PDF with a password. Encryption runs locally in your browser — your file is never uploaded, so it stays private."
+steps:
+  - "Add the PDF you want to password-protect."
+  - "Type a password you'll remember in the Password field."
+  - "Click Download to create a locked copy. Anyone opening it will be asked for the password."
 faq:
   - q: "Is the password sent to a server?"
     a: "No. Both the PDF and the password are processed entirely in your browser with pdf-lib."
