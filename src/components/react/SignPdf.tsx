@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
-import { loadPdfJs, loadPdfLib, loadJsPDF, type ToolMessages } from "@/lib/pdf";
+import { loadPdfJs, loadPdfLib, loadJsPDF, pdfBlob, type ToolMessages } from "@/lib/pdf";
 
 interface Props {
   messages: ToolMessages;
@@ -9,12 +9,12 @@ interface Props {
 
 type Mode = "draw" | "type" | "upload" | "camera";
 
-const DISPLAY_SCALE = 1.6;
+const DISPLAY_SCALE = 1.5;
 
-// Utility: Process image to extract signature strokes from white paper
+// Extract signature ink from white paper background
 function extractSignatureFromCanvas(
   sourceCanvas: HTMLCanvasElement,
-  threshold: number = 200,
+  threshold: number = 205,
   inkColor: string = "original"
 ): string {
   const w = sourceCanvas.width;
@@ -36,7 +36,7 @@ function extractSignatureFromCanvas(
     const g = data[i + 1];
     const b = data[i + 2];
     
-    // Perceived brightness (luminance)
+    // Perceived brightness
     const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
 
     if (luminance < threshold) {
@@ -53,7 +53,6 @@ function extractSignatureFromCanvas(
         data[i + 1] = 55;
         data[i + 2] = 165;
       } else {
-        // Boost contrast on original ink color
         data[i] = Math.max(0, r - 35);
         data[i + 1] = Math.max(0, g - 35);
         data[i + 2] = Math.max(0, b - 35);
@@ -69,14 +68,14 @@ function extractSignatureFromCanvas(
       if (py > maxY) maxY = py;
       hasStrokes = true;
     } else {
-      // White paper background -> 100% transparent
+      // White paper -> transparent
       data[i + 3] = 0;
     }
   }
 
   ctx.putImageData(imgData, 0, 0);
 
-  // Auto-crop to bounding box of the signature
+  // Auto-crop to bounding box of signature
   if (hasStrokes && maxX > minX && maxY > minY) {
     const pad = 16;
     const cropX = Math.max(0, minX - pad);
@@ -95,8 +94,20 @@ function extractSignatureFromCanvas(
   return canvas.toDataURL("image/png");
 }
 
+// Convert base64 data URL to Uint8Array
+function dataUrlToBytes(dataUrl: string): Uint8Array {
+  const base64 = dataUrl.split(",")[1];
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
 export default function SignPdf({ messages }: Props) {
   const [file, setFile] = useState<File | null>(null);
+  const [rawPdfBytes, setRawPdfBytes] = useState<Uint8Array | null>(null);
   const [mode, setMode] = useState<Mode>("draw");
 
   // Draw state
@@ -169,9 +180,13 @@ export default function SignPdf({ messages }: Props) {
     setDownloadUrl(null);
 
     try {
+      const arrayBuf = await f.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuf);
+      setRawPdfBytes(bytes);
+
       const pdfjs = await loadPdfJs();
-      const data = await f.arrayBuffer();
-      const pdf = await pdfjs.getDocument({ data }).promise;
+      // Pass a clone of the byte buffer to prevent worker detachment
+      const pdf = await pdfjs.getDocument({ data: bytes.slice() }).promise;
       setPdfDoc(pdf);
       setTotalPages(pdf.numPages);
       setPlaced({ x: 0.5, y: 0.75 });
@@ -466,26 +481,25 @@ export default function SignPdf({ messages }: Props) {
     handle.addEventListener("pointerup", onResizeUp);
   }
 
-  // --- Save / Bake with bulletproof PDF generator ---
+  // --- Save / Bake with reliable PDF generator ---
   async function bake() {
     if (!file || !signatureUrl) return;
     setState("processing");
     try {
-      const sigRes = await fetch(signatureUrl);
-      const sigBuffer = await sigRes.arrayBuffer();
+      const sigPngBytes = dataUrlToBytes(signatureUrl);
 
-      // Attempt 1: Vector lossless embedding with pdf-lib
+      // 1. Vector embedding with pdf-lib
       try {
         const { PDFDocument } = await loadPdfLib();
-        const fileBuffer = await file.arrayBuffer();
-        const doc = await PDFDocument.load(fileBuffer, { ignoreEncryption: true });
+        const sourceBytes = rawPdfBytes ? rawPdfBytes.slice() : new Uint8Array(await file.arrayBuffer());
+        const doc = await PDFDocument.load(sourceBytes, { ignoreEncryption: true });
 
         const pages = doc.getPages();
         const targetIndex = Math.max(0, Math.min(placedPage - 1, pages.length - 1));
         const targetPage = pages[targetIndex];
         const { width, height } = targetPage.getSize();
 
-        const sigImage = await doc.embedPng(sigBuffer);
+        const sigImage = await doc.embedPng(sigPngBytes);
         const sigW = width * (sigScale / 100);
         const sigH = sigW * (sigImage.height / sigImage.width);
 
@@ -503,7 +517,7 @@ export default function SignPdf({ messages }: Props) {
         });
 
         const savedBytes = await doc.save();
-        const blob = new Blob([savedBytes as unknown as ArrayBuffer], { type: "application/pdf" });
+        const blob = pdfBlob(savedBytes);
         const url = URL.createObjectURL(blob);
         setDownloadUrl(url);
         setFilename(`signed-${file.name.replace(/\.pdf$/i, "")}.pdf`);
@@ -511,14 +525,14 @@ export default function SignPdf({ messages }: Props) {
         setState("done");
         return;
       } catch (pdfLibErr) {
-        console.warn("pdf-lib direct embed encountered an issue, using rendering fallback:", pdfLibErr);
+        console.warn("pdf-lib direct embed encountered an issue, falling back to raster:", pdfLibErr);
       }
 
-      // Attempt 2: Fallback rendering with jsPDF
+      // 2. Fallback rendering with jsPDF
       const pdfjs = await loadPdfJs();
       const { jsPDF } = await loadJsPDF();
-      const data = await file.arrayBuffer();
-      const pdf = await pdfjs.getDocument({ data }).promise;
+      const sourceBytes = rawPdfBytes ? rawPdfBytes.slice() : new Uint8Array(await file.arrayBuffer());
+      const pdf = await pdfjs.getDocument({ data: sourceBytes }).promise;
 
       const firstPage = await pdf.getPage(1);
       const firstViewport = firstPage.getViewport({ scale: 1.5 });
@@ -557,7 +571,7 @@ export default function SignPdf({ messages }: Props) {
       setDoneLabel(`Signature applied to page ${placedPage} of ${pdf.numPages}`);
       setState("done");
     } catch (err) {
-      console.error("Sign PDF final error:", err);
+      console.error("Sign PDF error:", err);
       setState("error");
     }
   }
@@ -565,6 +579,7 @@ export default function SignPdf({ messages }: Props) {
   function reset() {
     stopCamera();
     setFile(null);
+    setRawPdfBytes(null);
     setTyped("");
     setSignatureUrl(null);
     setRawImageCanvas(null);
@@ -958,18 +973,27 @@ export default function SignPdf({ messages }: Props) {
         </div>
       )}
 
-      <ProcessResult
-        messages={messages}
-        state={state}
-        doneLabel={doneLabel}
-        onReset={reset}
-      >
-        {state === "done" && downloadUrl && (
+      {state === "done" && downloadUrl && (
+        <ProcessResult
+          messages={messages}
+          state={state}
+          doneLabel={doneLabel}
+          onReset={reset}
+        >
           <a className="btn btn--primary" href={downloadUrl} download={filename}>
             {messages.download}
           </a>
-        )}
-      </ProcessResult>
+        </ProcessResult>
+      )}
+
+      {state === "error" && (
+        <ProcessResult
+          messages={messages}
+          state={state}
+          doneLabel={null}
+          onReset={reset}
+        />
+      )}
     </div>
   );
 }
