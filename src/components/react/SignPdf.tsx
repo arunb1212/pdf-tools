@@ -9,7 +9,7 @@ interface Props {
 
 type Mode = "draw" | "type" | "upload" | "camera";
 
-const DISPLAY_SCALE = 1.2;
+const DISPLAY_SCALE = 1.3;
 
 // Utility: Process image to extract signature strokes from white paper
 function extractSignatureFromCanvas(
@@ -106,44 +106,6 @@ function dataUrlToBytes(dataUrl: string): Uint8Array {
   return bytes;
 }
 
-// Renders a single PDF page to a canvas; clicking sets the signature position.
-function SignPageView({
-  pdf,
-  pageNum,
-  onPlace,
-}: {
-  pdf: any;
-  pageNum: number;
-  onPlace: (e: React.MouseEvent<HTMLCanvasElement>) => void;
-}) {
-  const ref = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    let active = true;
-    async function draw() {
-      if (!pdf || !ref.current) return;
-      try {
-        const page = await pdf.getPage(pageNum);
-        const viewport = page.getViewport({ scale: DISPLAY_SCALE });
-        const canvas = ref.current;
-        if (!canvas || !active) return;
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext("2d")!;
-        await page.render({ canvasContext: ctx, viewport }).promise;
-      } catch (err) {
-        console.error("Failed to render PDF page:", err);
-      }
-    }
-    draw();
-    return () => {
-      active = false;
-    };
-  }, [pdf, pageNum]);
-
-  return <canvas ref={ref} className="sign-page" onClick={onPlace} style={{ cursor: "crosshair" }} />;
-}
-
 export default function SignPdf({ messages }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<Mode>("draw");
@@ -170,19 +132,25 @@ export default function SignPdf({ messages }: Props) {
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [sigScale, setSigScale] = useState<number>(30); // % of page width
   const [placed, setPlaced] = useState<{ x: number; y: number } | null>(null);
+  const [placedPage, setPlacedPage] = useState<number>(1);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // PDF Preview and document
+  const [pdfDoc, setPdfDoc] = useState<any>(null);
+  const [pageNum, setPageNum] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const pageCanvasRef = useRef<HTMLCanvasElement>(null);
+  const pageWrapRef = useRef<HTMLDivElement>(null);
 
   // Tool state
   const [state, setState] = useState<"idle" | "processing" | "done" | "error">("idle");
   const [doneLabel, setDoneLabel] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [filename, setFilename] = useState("signed.pdf");
-  const [pdfDoc, setPdfDoc] = useState<any>(null);
-  const [pageNum, setPageNum] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
 
   const accept = "application/pdf,.pdf";
 
-  // Clean up camera stream on unmount or mode switch
+  // Clean up camera stream on unmount
   useEffect(() => {
     return () => {
       stopCamera();
@@ -197,6 +165,7 @@ export default function SignPdf({ messages }: Props) {
     setCameraActive(false);
   }
 
+  // Handle PDF document upload
   async function handleFiles(incoming: File[]) {
     const f = incoming[0];
     if (!f || (f.type !== "application/pdf" && !f.name.toLowerCase().endsWith(".pdf"))) {
@@ -204,7 +173,6 @@ export default function SignPdf({ messages }: Props) {
       return;
     }
     setFile(f);
-    setPlaced(null);
     setPageNum(1);
     setState("idle");
     try {
@@ -213,13 +181,38 @@ export default function SignPdf({ messages }: Props) {
       const pdf = await pdfjs.getDocument({ data }).promise;
       setPdfDoc(pdf);
       setTotalPages(pdf.numPages);
-      // Default place near bottom center
+      // Place signature near bottom center by default on page 1
       setPlaced({ x: 0.5, y: 0.82 });
+      setPlacedPage(1);
     } catch (err) {
       console.error("PDF load error:", err);
       setState("error");
     }
   }
+
+  // Render current PDF page to preview canvas
+  useEffect(() => {
+    let active = true;
+    async function renderPage() {
+      if (!pdfDoc || !pageCanvasRef.current) return;
+      try {
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: DISPLAY_SCALE });
+        const canvas = pageCanvasRef.current;
+        if (!canvas || !active) return;
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext("2d")!;
+        await page.render({ canvasContext: ctx, viewport }).promise;
+      } catch (err) {
+        console.error("Failed to render PDF page:", err);
+      }
+    }
+    renderPage();
+    return () => {
+      active = false;
+    };
+  }, [pdfDoc, pageNum]);
 
   // --- Draw Mode Handlers ---
   function initDrawCanvas() {
@@ -266,6 +259,10 @@ export default function SignPdf({ messages }: Props) {
     const canvas = drawRef.current;
     if (canvas) {
       setSignatureUrl(canvas.toDataURL("image/png"));
+      if (!placed) {
+        setPlaced({ x: 0.5, y: 0.82 });
+        setPlacedPage(pageNum);
+      }
     }
   }
 
@@ -291,6 +288,10 @@ export default function SignPdf({ messages }: Props) {
     ctx.textBaseline = "middle";
     ctx.fillText(text, c.width / 2, c.height / 2);
     setSignatureUrl(c.toDataURL("image/png"));
+    if (!placed) {
+      setPlaced({ x: 0.5, y: 0.82 });
+      setPlacedPage(pageNum);
+    }
   }
 
   // --- Upload / Paper Extraction Handlers ---
@@ -322,6 +323,10 @@ export default function SignPdf({ messages }: Props) {
         setRawImageCanvas(c);
         const extracted = extractSignatureFromCanvas(c, threshold);
         setSignatureUrl(extracted);
+        if (!placed) {
+          setPlaced({ x: 0.5, y: 0.82 });
+          setPlacedPage(pageNum);
+        }
       };
       img.src = ev.target?.result as string;
     };
@@ -365,6 +370,10 @@ export default function SignPdf({ messages }: Props) {
     setRawImageCanvas(c);
     const extracted = extractSignatureFromCanvas(c, threshold);
     setSignatureUrl(extracted);
+    if (!placed) {
+      setPlaced({ x: 0.5, y: 0.82 });
+      setPlacedPage(pageNum);
+    }
   }
 
   // Re-extract if threshold slider changes
@@ -376,15 +385,84 @@ export default function SignPdf({ messages }: Props) {
     }
   }
 
-  // --- PDF Placement ---
-  function placeOnPage(e: React.MouseEvent<HTMLCanvasElement>) {
+  // --- Interactive PDF Click & Drag Placement ---
+  function handleCanvasClick(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (!signatureUrl || isDragging) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
     const y = (e.clientY - rect.top) / rect.height;
-    setPlaced({ x, y });
+    setPlaced({
+      x: Math.max(0.05, Math.min(0.95, x)),
+      y: Math.max(0.05, Math.min(0.95, y)),
+    });
+    setPlacedPage(pageNum);
   }
 
-  // --- Save / Bake with pdf-lib (Fast, reliable, zero quality loss) ---
+  // Drag signature box directly on PDF
+  function handleMarkerPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.stopPropagation();
+    const marker = e.currentTarget;
+    marker.setPointerCapture(e.pointerId);
+    setIsDragging(true);
+
+    const canvas = pageCanvasRef.current;
+    if (!canvas) return;
+    const canvasRect = canvas.getBoundingClientRect();
+
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+    const initialX = placed ? placed.x : 0.5;
+    const initialY = placed ? placed.y : 0.82;
+
+    function onPointerMove(ev: PointerEvent) {
+      const deltaX = (ev.clientX - startClientX) / canvasRect.width;
+      const deltaY = (ev.clientY - startClientY) / canvasRect.height;
+      const newX = Math.max(0.05, Math.min(0.95, initialX + deltaX));
+      const newY = Math.max(0.05, Math.min(0.95, initialY + deltaY));
+      setPlaced({ x: newX, y: newY });
+      setPlacedPage(pageNum);
+    }
+
+    function onPointerUp(ev: PointerEvent) {
+      marker.releasePointerCapture(ev.pointerId);
+      marker.removeEventListener("pointermove", onPointerMove);
+      marker.removeEventListener("pointerup", onPointerUp);
+      setTimeout(() => setIsDragging(false), 50);
+    }
+
+    marker.addEventListener("pointermove", onPointerMove);
+    marker.addEventListener("pointerup", onPointerUp);
+  }
+
+  // Resize handle dragging
+  function handleResizePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.stopPropagation();
+    const handle = e.currentTarget;
+    handle.setPointerCapture(e.pointerId);
+
+    const canvas = pageCanvasRef.current;
+    if (!canvas) return;
+    const canvasRect = canvas.getBoundingClientRect();
+    const startClientX = e.clientX;
+    const initialScale = sigScale;
+
+    function onResizeMove(ev: PointerEvent) {
+      const deltaPercent = ((ev.clientX - startClientX) / canvasRect.width) * 100 * 2;
+      const newScale = Math.max(12, Math.min(70, initialScale + deltaPercent));
+      setSigScale(Math.round(newScale));
+    }
+
+    function onResizeUp(ev: PointerEvent) {
+      handle.releasePointerCapture(ev.pointerId);
+      handle.removeEventListener("pointermove", onResizeMove);
+      handle.removeEventListener("pointerup", onResizeUp);
+    }
+
+    handle.addEventListener("pointermove", onResizeMove);
+    handle.addEventListener("pointerup", onResizeUp);
+  }
+
+  // --- Save with pdf-lib (Fast, reliable, zero quality loss) ---
   async function bake() {
     if (!file || !signatureUrl) return;
     setState("processing");
@@ -394,7 +472,7 @@ export default function SignPdf({ messages }: Props) {
       const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
 
       const pages = doc.getPages();
-      const targetIndex = Math.max(0, Math.min(pageNum - 1, pages.length - 1));
+      const targetIndex = Math.max(0, Math.min(placedPage - 1, pages.length - 1));
       const targetPage = pages[targetIndex];
       const { width, height } = targetPage.getSize();
 
@@ -402,7 +480,7 @@ export default function SignPdf({ messages }: Props) {
       const sigPngBytes = dataUrlToBytes(signatureUrl);
       const sigImage = await doc.embedPng(sigPngBytes);
 
-      const widthRatio = (sigScale / 100);
+      const widthRatio = sigScale / 100;
       const sigW = width * widthRatio;
       const sigH = sigW * (sigImage.height / sigImage.width);
 
@@ -424,7 +502,7 @@ export default function SignPdf({ messages }: Props) {
       const blob = new Blob([savedBytes as unknown as ArrayBuffer], { type: "application/pdf" });
       setDownloadUrl(URL.createObjectURL(blob));
       setFilename(`signed-${file.name.replace(/\.pdf$/i, "")}.pdf`);
-      setDoneLabel(`Signature successfully applied to page ${pageNum} of ${pages.length}`);
+      setDoneLabel(`Signature successfully applied to page ${placedPage} of ${pages.length}`);
       setState("done");
     } catch (err) {
       console.error("Sign PDF error:", err);
@@ -440,6 +518,7 @@ export default function SignPdf({ messages }: Props) {
     setRawImageCanvas(null);
     setPlaced(null);
     setPageNum(1);
+    setPlacedPage(1);
     setTotalPages(0);
     setPdfDoc(null);
     setState("idle");
@@ -460,7 +539,7 @@ export default function SignPdf({ messages }: Props) {
 
       {file && (
         <div className="sign-editor">
-          {/* Mode Selector */}
+          {/* Step 1: Create Signature */}
           <div className="sign-modes" role="tablist">
             <button
               type="button"
@@ -711,85 +790,115 @@ export default function SignPdf({ messages }: Props) {
             )}
           </div>
 
-          {/* Signature Preview & PDF Placement */}
-          {signatureUrl && (
-            <div className="sign-preview-wrap">
-              <div className="sign-preview-header">
+          {/* Step 2: Live PDF Preview & Movable Signature on Document */}
+          <div className="sign-preview-wrap">
+            <div className="sign-preview-header">
+              {signatureUrl ? (
                 <div className="sign-extracted-card">
                   <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--color-text-muted)" }}>
-                    Active Signature:
+                    Signature:
                   </span>
                   <img src={signatureUrl} alt="Signature" className="sign-extracted-img" />
                 </div>
+              ) : (
+                <div style={{ fontSize: "0.9rem", color: "var(--color-text-muted)" }}>
+                  ✍️ Create or upload your signature above to place it on the document.
+                </div>
+              )}
 
-                <div className="sign-pages-nav">
+              <div className="sign-pages-nav">
+                {signatureUrl && (
                   <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", marginRight: "0.5rem" }}>
                     <span style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>Size:</span>
                     <input
                       type="range"
-                      min="15"
-                      max="55"
+                      min="12"
+                      max="65"
                       value={sigScale}
                       onChange={(e) => setSigScale(Number(e.target.value))}
-                      style={{ width: "90px" }}
+                      style={{ width: "85px" }}
                     />
                   </label>
-
-                  <button
-                    type="button"
-                    className="btn btn--secondary"
-                    disabled={pageNum <= 1}
-                    onClick={() => setPageNum((p) => p - 1)}
-                  >
-                    ‹ Prev
-                  </button>
-                  <span>
-                    Page {pageNum} / {totalPages}
-                  </span>
-                  <button
-                    type="button"
-                    className="btn btn--secondary"
-                    disabled={pageNum >= totalPages}
-                    onClick={() => setPageNum((p) => p + 1)}
-                  >
-                    Next ›
-                  </button>
-                </div>
-              </div>
-
-              <p className="sign-hint">
-                📍 <strong>Click anywhere on the PDF page</strong> to position your signature.
-              </p>
-
-              <div className="sign-page-wrap">
-                <SignPageView pdf={pdfDoc} pageNum={pageNum} onPlace={placeOnPage} />
-                {placed && (
-                  <div
-                    className="sign-place-marker"
-                    style={{
-                      left: `${placed.x * 100}%`,
-                      top: `${placed.y * 100}%`,
-                      width: `${sigScale}%`,
-                    }}
-                  >
-                    <img src={signatureUrl} alt="" />
-                  </div>
                 )}
-              </div>
 
-              {state !== "done" && (
                 <button
                   type="button"
-                  className="btn btn--primary btn--block"
-                  disabled={state === "processing"}
-                  onClick={bake}
-                  style={{ padding: "0.9rem", fontSize: "1.05rem" }}
+                  className="btn btn--secondary"
+                  disabled={pageNum <= 1}
+                  onClick={() => setPageNum((p) => p - 1)}
                 >
-                  {state === "processing" ? messages.processing : `Apply & Download Signed PDF`}
+                  ‹ Prev
                 </button>
+                <span>
+                  Page {pageNum} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn--secondary"
+                  disabled={pageNum >= totalPages}
+                  onClick={() => setPageNum((p) => p + 1)}
+                >
+                  Next ›
+                </button>
+              </div>
+            </div>
+
+            <p className="sign-hint">
+              ✋ <strong>Drag & move</strong> the signature directly onto the PDF line, or click anywhere on the page to reposition.
+            </p>
+
+            <div className="sign-page-wrap" ref={pageWrapRef}>
+              <canvas
+                ref={pageCanvasRef}
+                className="sign-page"
+                onClick={handleCanvasClick}
+                style={{ cursor: signatureUrl ? "crosshair" : "default" }}
+              />
+
+              {signatureUrl && placed && placedPage === pageNum && (
+                <div
+                  className={`sign-place-marker ${isDragging ? "is-dragging" : ""}`}
+                  style={{
+                    left: `${placed.x * 100}%`,
+                    top: `${placed.y * 100}%`,
+                    width: `${sigScale}%`,
+                  }}
+                  onPointerDown={handleMarkerPointerDown}
+                >
+                  <span className="sign-marker-badge">✋ Drag to move</span>
+                  <button
+                    type="button"
+                    className="sign-delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPlaced(null);
+                    }}
+                    title="Remove signature from page"
+                  >
+                    ×
+                  </button>
+                  <img src={signatureUrl} alt="" />
+                  <div
+                    className="sign-resize-handle"
+                    onPointerDown={handleResizePointerDown}
+                    title="Drag corner to resize"
+                  />
+                </div>
               )}
             </div>
-          )}
+
+            {signatureUrl && state !== "done" && (
+              <button
+                type="button"
+                className="btn btn--primary btn--block"
+                disabled={state === "processing"}
+                onClick={bake}
+                style={{ padding: "0.9rem", fontSize: "1.05rem", marginTop: "0.75rem" }}
+              >
+                {state === "processing" ? messages.processing : `Download Signed PDF`}
+              </button>
+            )}
+          </div>
 
           <p className="legal-note">{messages.legalNote}</p>
         </div>
