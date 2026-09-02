@@ -415,6 +415,12 @@ export default function SignPdf({ messages }: Props) {
 
   // Drag signature box directly on PDF document
   function handleMarkerPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    // Ignore clicks on child buttons (like delete cross or resize handle)
+    const target = e.target as HTMLElement;
+    if (target.closest(".sign-delete-btn") || target.closest(".sign-resize-handle")) {
+      return;
+    }
+
     e.stopPropagation();
     const marker = e.currentTarget;
     marker.setPointerCapture(e.pointerId);
@@ -906,16 +912,29 @@ export default function SignPdf({ messages }: Props) {
               </div>
 
               {signatureUrl && (
-                <label className="sign-size-control">
-                  <span>Signature Size:</span>
-                  <input
-                    type="range"
-                    min="10"
-                    max="65"
-                    value={sigScale}
-                    onChange={(e) => setSigScale(Number(e.target.value))}
-                  />
-                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  <label className="sign-size-control">
+                    <span>Signature Size:</span>
+                    <input
+                      type="range"
+                      min="10"
+                      max="65"
+                      value={sigScale}
+                      onChange={(e) => setSigScale(Number(e.target.value))}
+                    />
+                  </label>
+                  {placed && (
+                    <button
+                      type="button"
+                      className="btn btn--secondary btn--sm"
+                      style={{ color: "var(--color-error)", borderColor: "var(--color-error)" }}
+                      onClick={() => setPlaced(null)}
+                      title="Remove signature from current position"
+                    >
+                      Clear Placement
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 
@@ -943,11 +962,16 @@ export default function SignPdf({ messages }: Props) {
                     <button
                       type="button"
                       className="sign-delete-btn"
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        setPlaced(null);
+                      }}
                       onClick={(e) => {
                         e.stopPropagation();
                         setPlaced(null);
                       }}
                       title="Remove signature from page"
+                      aria-label="Remove signature"
                     >
                       ×
                     </button>
