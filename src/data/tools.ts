@@ -130,30 +130,18 @@ export const tools: ToolDef[] = [
     },
     related: ["pdf-to-csv", "csv-to-pdf", "pdf-to-jpg"],
   },
-  // Phase 2 — ship after initial traffic.
+  // Phase 2 — Redaction & Signing tools.
   {
-    id: "write-on-pdf",
-    component: "WriteOnPdf",
+    id: "hide-data-on-pdf",
+    component: "HideDataOnPdf",
     processing: "client",
-    slug: { [en]: "write-on-pdf", [de]: "pdf-beschriften" },
-    label: { [en]: "Write on PDF", [de]: "PDF beschriften" },
+    slug: { [en]: "hide-data-on-pdf", [de]: "pdf-daten-schwaerzen" },
+    label: { [en]: "Hide Data on PDF", [de]: "PDF Daten schwärzen" },
     summary: {
-      [en]: "Add text boxes at any position on a page.",
-      [de]: "Textboxen an beliebigen Positionen auf einer Seite hinzufügen.",
+      [en]: "Redact and blackout sensitive text, names, or numbers from PDF files.",
+      [de]: "Sensible Daten, Namen oder Zahlen in PDF-Dateien dauerhaft schwärzen.",
     },
-    related: ["create-pdf", "sign-pdf", "pdf-to-jpg"],
-  },
-  {
-    id: "create-pdf",
-    component: "CreatePdf",
-    processing: "client",
-    slug: { [en]: "create-pdf", [de]: "pdf-erstellen" },
-    label: { [en]: "Create PDF", [de]: "PDF erstellen" },
-    summary: {
-      [en]: "Build a blank or templated PDF from scratch.",
-      [de]: "Ein leeres oder vorlagenbasiertes PDF von Grund auf erstellen.",
-    },
-    related: ["write-on-pdf", "jpg-to-pdf", "csv-to-pdf"],
+    related: ["sign-pdf", "lock-pdf", "pdf-to-jpg"],
   },
   {
     id: "sign-pdf",
@@ -162,10 +150,10 @@ export const tools: ToolDef[] = [
     slug: { [en]: "sign-pdf", [de]: "pdf-signieren" },
     label: { [en]: "Sign PDF", [de]: "PDF signieren" },
     summary: {
-      [en]: "Draw or type a signature and place it on the document.",
-      [de]: "Signatur zeichnen oder tippen und im Dokument platzieren.",
+      [en]: "Draw, type, or upload a signature and place it on the document.",
+      [de]: "Signatur zeichnen, tippen oder scannen und im Dokument platzieren.",
     },
-    related: ["write-on-pdf", "create-pdf", "merge-pdf"],
+    related: ["hide-data-on-pdf", "merge-pdf", "lock-pdf"],
   },
 ];
 

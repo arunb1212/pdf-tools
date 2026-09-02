@@ -15,8 +15,7 @@ import JpgToPdf from "./react/JpgToPdf.tsx";
 import CsvToPdf from "./react/CsvToPdf.tsx";
 import PdfToCsv from "./react/PdfToCsv.tsx";
 import JpgToCsv from "./react/JpgToCsv.tsx";
-import WriteOnPdf from "./react/WriteOnPdf.tsx";
-import CreatePdf from "./react/CreatePdf.tsx";
+import HideDataOnPdf from "./react/HideDataOnPdf.tsx";
 import SignPdf from "./react/SignPdf.tsx";
 
 interface Props {
@@ -104,8 +103,7 @@ const isBuilt = [
   "CsvToPdf",
   "PdfToCsv",
   "JpgToCsv",
-  "WriteOnPdf",
-  "CreatePdf",
+  "HideDataOnPdf",
   "SignPdf",
 ].includes(data.component);
 ---
@@ -143,8 +141,7 @@ const isBuilt = [
               {data.component === "CsvToPdf" && <CsvToPdf client:visible messages={messages} />}
               {data.component === "PdfToCsv" && <PdfToCsv client:visible messages={messages} />}
               {data.component === "JpgToCsv" && <JpgToCsv client:visible messages={messages} />}
-              {data.component === "WriteOnPdf" && <WriteOnPdf client:visible messages={messages} />}
-              {data.component === "CreatePdf" && <CreatePdf client:visible messages={messages} />}
+              {data.component === "HideDataOnPdf" && <HideDataOnPdf client:visible messages={messages} />}
               {data.component === "SignPdf" && <SignPdf client:visible messages={messages} />}
             </>
           ) : (
