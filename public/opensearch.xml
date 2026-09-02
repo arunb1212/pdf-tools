@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>PDF Tools</ShortName>
+  <Description>Fast, private PDF tools that run right in your browser.</Description>
+  <InputEncoding>UTF-8</InputEncoding>
+  <OutputEncoding>UTF-8</OutputEncoding>
+  <Url type="text/html" template="https://pdf-tools-lemon-nine.vercel.app/?q={searchTerms}"/>
+</OpenSearchDescription>

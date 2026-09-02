@@ -98,6 +98,35 @@ const schemaEntry = jsonLdArray.length
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ff2e2e'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z' fill='%23ff2e2e'/%3E%3Cpath d='M14 2v6h6' fill='%23ffffff' opacity='0.3'/%3E%3Ctext x='12' y='18' fill='%23ffffff' font-family='sans-serif' font-weight='900' font-size='6' text-anchor='middle'%3EPDF%3C/text%3E%3C/svg%3E"
     />
 
+    <!-- Font preloading for optimal Core Web Vitals (INP / LCP) -->
+    <link
+      rel="preload"
+      href="/fonts/GeistSans-Regular.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/GeistSans-SemiBold.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <!-- Search & Discovery -->
+    <link
+      rel="search"
+      type="application/opensearchdescription+xml"
+      href="/opensearch.xml"
+      title={t.siteName}
+    />
+    <link
+      rel="author"
+      type="text/plain"
+      href="/llms.txt"
+    />
+
     <meta property="og:type" content={ogType} />
     <meta property="og:site_name" content={t.siteName} />
     <meta property="og:title" content={title} />

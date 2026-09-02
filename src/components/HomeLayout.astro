@@ -62,6 +62,22 @@ const jsonLd = [
     inLanguage: locale === "de" ? "de-DE" : "en-US",
   },
   {
+    "@type": "WebApplication",
+    "@id": `${Astro.site!.origin}/#webapp`,
+    name: t.siteName,
+    url: Astro.site!.origin,
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "All",
+    browserRequirements: "Requires JavaScript. Requires HTML5.",
+    description: t.heroSubtitle,
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+    featureList: homeTools.map((tool) => `${tool.label[locale]}: ${tool.summary[locale]}`),
+  },
+  {
     "@type": "FAQPage",
     mainEntity: homeFaq[locale].map((f) => ({
       "@type": "Question",
@@ -114,8 +130,8 @@ const jsonLd = [
         <ul class="tools__grid">
           {homeTools.map((tool) => (
             <li>
-              <a class="tool-card" href={getToolUrl(tool, locale)}>
-                <span class="tool-card__badge" data-processing={tool.processing}>
+              <a class="tool-card" href={getToolUrl(tool, locale)} aria-label={`${tool.label[locale]}: ${tool.summary[locale]}`}>
+                <span class="tool-card__badge" data-processing={tool.processing} aria-hidden="true">
                   {tool.processing === "client"
                     ? t.clientSide
                     : tool.processing === "hybrid"

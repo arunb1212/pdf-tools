@@ -1,0 +1,40 @@
+# PDF Tools (https://pdf-tools-lemon-nine.vercel.app/)
+
+> Fast, private, browser-native PDF utilities that run entirely on the client side without mandatory file uploads or server storage.
+
+## Overview
+PDF Tools is an open-access suite of client-side document processing tools built on modern web standards (WebAssembly, Web Workers, HTML5 Canvas, and client-side JavaScript). User documents remain on their local device for standard PDF actions, ensuring complete confidentiality for sensitive legal, financial, and personal files.
+
+## Core Capabilities & Tools
+
+### Document Manipulation
+- **Merge PDF (`/merge-pdf/`, `/de/pdf-zusammenfuegen/`)**: Combine multiple PDF files into a single document with drag-and-drop page reordering.
+- **Split PDF (`/split-pdf/`, `/de/pdf-teilen/`)**: Extract custom page ranges or split a multi-page PDF into separate single-page documents.
+- **Hide Data on PDF (`/hide-data-on-pdf/`, `/de/daten-in-pdf-ausblenden/`)**: Black out and redact sensitive text, personally identifiable information (PII), and numbers directly in the browser canvas before sharing.
+- **All-in-One PDF Studio (`/editor/`, `/de/editor/`)**: Browser-based interactive editor to view, annotate, reorganize, and modify PDFs in a unified workspace.
+
+### Security & Encryption
+- **Lock PDF (`/lock-pdf/`, `/de/pdf-sperren/`)**: Add AES password protection and encryption to PDF documents client-side.
+- **Unlock PDF (`/unlock-pdf/`, `/de/pdf-entsperren/`)**: Decrypt and remove owner/user passwords from protected PDFs when the authorization key is known.
+
+### Form Filling & Signatures
+- **Sign PDF (`/sign-pdf/`, `/de/pdf-unterschreiben/`)**: Draw, type, or upload digital signatures and place them accurately on any page without server uploads.
+- **Fill & Sign PDF (`/fill-pdf-form/`, `/de/pdf-formular-ausfuellen/`)**: Fill interactive and flattened PDF forms, insert text, stamp dates, checkmarks, and signatures.
+
+### Conversions & Extraction
+- **PDF to JPG (`/pdf-to-jpg/`, `/de/pdf-in-jpg/`)**: Render each page of a PDF document as high-resolution JPG or PNG images using browser canvas rendering.
+- **JPG to PDF (`/jpg-to-pdf/`, `/de/jpg-in-pdf/`)**: Combine single or multiple image files (JPEG, PNG) into a cleanly formatted PDF document.
+- **CSV to PDF (`/csv-to-pdf/`, `/de/csv-in-pdf/`)**: Format tabular CSV datasets into structured, styled PDF reports and tables.
+- **PDF to CSV (`/pdf-to-csv/`, `/de/pdf-in-csv/`)**: Extract tabular data and text structures from PDFs into editable CSV files (hybrid processing).
+- **JPG to CSV (`/jpg-to-csv/`, `/de/jpg-in-csv/`)**: Optical Character Recognition (OCR) to convert scanned documents or receipts into CSV tables.
+
+## Privacy & Security Architecture
+- **Client-Side Processing**: Standard PDF operations execute entirely in the user's browser using client-side engines (`pdf-lib`, `pdfjs-dist`, `jspdf`).
+- **No Cloud Uploads**: Documents are not transmitted across the network, stored on third-party servers, or indexed by external databases.
+- **Zero Account Requirement**: No registration, login, cookies, or subscription paywalls required. No file watermarks applied.
+- **Hybrid/OCR Fallback**: Where complex server-assisted OCR or heuristics are required (e.g., complex scanned table extraction), the UI explicitly notifies the user before processing, and files are discarded immediately upon completion.
+
+## Supported Languages & Localization
+- **English**: `https://pdf-tools-lemon-nine.vercel.app/` (Default)
+- **German (Deutsch)**: `https://pdf-tools-lemon-nine.vercel.app/de/`
+- All pages feature bidirectional `hreflang` tags with `x-default` fallbacks.
