@@ -1,0 +1,105 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+import { ui, type Locale } from "../../i18n/ui";
+import PdfStudio from "../../components/react/PdfStudio.tsx";
+
+export async function getStaticPaths() {
+  return [{ params: { locale: "de" } }];
+}
+
+const locale: Locale = "de";
+const t = ui[locale];
+const path = "/de/editor/";
+
+const alternates = [
+  { locale: "en", path: "/editor/" },
+  { locale: "de", path: "/de/editor/" },
+];
+
+const languagePaths = {
+  en: "/editor/",
+  de: "/de/editor/",
+};
+
+const title = "All-in-One PDF Studio & Editor — Schwärzen, Signieren, Text einfügen & Zusammenfügen";
+const description = "Bearbeiten, schwärzen, signieren, beschriften und fügen Sie PDFs in einer einzigen Sitzung zusammen – ganz ohne Zwischenspeichern und erneutes Hochladen. 100% Datenschutz im Browser.";
+
+const messages = {
+  dragDrop: t.dragDrop,
+  browse: t.browse,
+  chooseFiles: t.chooseFiles,
+  unsupportedFile: t.unsupportedFile,
+  processing: t.processing,
+  download: t.download,
+  processAnother: t.processAnother,
+  errorGeneric: t.errorGeneric,
+  legalNote: t.legalNote,
+};
+
+const jsonLd = [
+  {
+    "@type": "SoftwareApplication",
+    name: "PDF Studio — All-in-One Multi-Tool PDF Editor",
+    description: description,
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "Web",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
+    url: `${Astro.site!.origin}/de/editor/`,
+  },
+];
+---
+
+<BaseLayout
+  locale={locale}
+  title={title}
+  description={description}
+  path={path}
+  alternates={alternates}
+  jsonLd={jsonLd}
+>
+  <Header locale={locale} languagePaths={languagePaths} />
+
+  <main id="main-content">
+    <article class="container tool-page">
+      <header class="tool-page__header">
+        <span class="tool-badge" data-processing="client">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align: -2px; margin-right: 4px;">
+            <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+            <path d="M5 3v4" />
+            <path d="M19 17v4" />
+          </svg>
+          All-in-One PDF Studio
+        </span>
+        <h1>All-in-One PDF Editor & Multi-Tool Studio</h1>
+        <p class="tool-page__tagline">
+          Sensible Daten schwärzen, Dokumente unterschreiben, Texte einfügen, Stempel platzieren und mehrere PDFs zusammenführen – alles in einer einzigen Sitzung.
+        </p>
+      </header>
+
+      <section class="widget" aria-label="PDF Studio Editor">
+        <PdfStudio client:load messages={messages} locale={locale} />
+      </section>
+
+      <section class="tool-page__body">
+        <h2>Warum das All-in-One PDF Studio nutzen?</h2>
+        <p>
+          Herkömmliche Online-Tools zwingen Sie zu zeitraubenden Einzelschritten: PDF hochladen, schwärzen, herunterladen, wieder hochladen zum Signieren, wieder herunterladen.
+        </p>
+        <p>
+          Mit dem <strong>PDF Studio</strong> erledigen Sie alle Aufgaben in einem durchgehenden Arbeitsbereich:
+        </p>
+        <ul>
+          <li><strong>Dauerhafte Schwärzung:</strong> Zensieren Sie Namen, Kontonummern und sensible Abschnitte zuverlässig.</li>
+          <li><strong>Digitale Unterschrift:</strong> Unterschreiben Sie per Zeichnung, Tastatur oder Foto-Scan direkt auf der gewünschten Seite.</li>
+          <li><strong>Freie Textbeschriftung:</strong> Fügen Sie Notizen, Datumsangaben und Ergänzungen an beliebigen Stellen ein.</li>
+          <li><strong>Direktes Zusammenfügen:</strong> Hängen Sie weitere PDF-Dokumente nahtlos an die laufende Sitzung an.</li>
+          <li><strong>100% DSGVO-konform:</strong> Alle Bearbeitungsschritte laufen ausschließlich in Ihrem Browser ohne Cloud-Upload.</li>
+        </ul>
+      </section>
+    </article>
+  </main>
+
+  <Footer locale={locale} />
+</BaseLayout>

@@ -1,0 +1,101 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { ui, defaultLocale } from "../i18n/ui";
+import PdfStudio from "../components/react/PdfStudio.tsx";
+
+const locale = defaultLocale;
+const t = ui[locale];
+const path = "/editor/";
+
+const alternates = [
+  { locale: "en", path: "/editor/" },
+  { locale: "de", path: "/de/editor/" },
+];
+
+const languagePaths = {
+  en: "/editor/",
+  de: "/de/editor/",
+};
+
+const title = "All-in-One PDF Studio & Multi-Tool Editor — Redact, Sign, Add Text & Merge";
+const description = "Edit, redact, sign, add text, insert images, and merge PDF files in a single seamless session without downloading and re-uploading. 100% private, client-side browser processing.";
+
+const messages = {
+  dragDrop: t.dragDrop,
+  browse: t.browse,
+  chooseFiles: t.chooseFiles,
+  unsupportedFile: t.unsupportedFile,
+  processing: t.processing,
+  download: t.download,
+  processAnother: t.processAnother,
+  errorGeneric: t.errorGeneric,
+  legalNote: t.legalNote,
+};
+
+const jsonLd = [
+  {
+    "@type": "SoftwareApplication",
+    name: "PDF Studio — All-in-One Multi-Tool PDF Editor",
+    description: description,
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "Web",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    url: `${Astro.site!.origin}/editor/`,
+  },
+];
+---
+
+<BaseLayout
+  locale={locale}
+  title={title}
+  description={description}
+  path={path}
+  alternates={alternates}
+  jsonLd={jsonLd}
+>
+  <Header locale={locale} languagePaths={languagePaths} />
+
+  <main id="main-content">
+    <article class="container tool-page">
+      <header class="tool-page__header">
+        <span class="tool-badge" data-processing="client">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align: -2px; margin-right: 4px;">
+            <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+            <path d="M5 3v4" />
+            <path d="M19 17v4" />
+          </svg>
+          All-in-One PDF Studio
+        </span>
+        <h1>All-in-One PDF Editor & Multi-Tool Studio</h1>
+        <p class="tool-page__tagline">
+          Hide sensitive data, sign documents, add text, insert stamps, and merge multiple PDFs in a single session without downloading and re-uploading.
+        </p>
+      </header>
+
+      <section class="widget" aria-label="PDF Studio Editor">
+        <PdfStudio client:load messages={messages} locale={locale} />
+      </section>
+
+      <section class="tool-page__body">
+        <h2>Why Use the All-in-One PDF Studio?</h2>
+        <p>
+          Traditional online PDF utilities force you into a frustrating cycle: upload a PDF to redact data, download it, upload the result to a signature tool, download again, and then upload to a merge tool.
+        </p>
+        <p>
+          <strong>PDF Studio</strong> consolidates every major tool into a single continuous canvas workspace:
+        </p>
+        <ul>
+          <li><strong>Permanent Data Redaction:</strong> Conceal names, account numbers, and confidential clauses with solid blackout or whiteout blocks.</li>
+          <li><strong>Digital Signatures:</strong> Draw, type, or extract signatures from paper/camera and stamp them with precision.</li>
+          <li><strong>Text Annotations:</strong> Add custom notes, headings, and dates anywhere on the document.</li>
+          <li><strong>In-Session Merging:</strong> Append pages from additional PDF files directly into your active workspace.</li>
+          <li><strong>100% Client-Side Privacy:</strong> Zero cloud uploads. All rendering and export operations execute locally inside your browser.</li>
+        </ul>
+      </section>
+    </article>
+  </main>
+
+  <Footer locale={locale} />
+</BaseLayout>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
 import { loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
+import { ShieldLockIcon, DownloadIcon, TrashIcon } from "./Icons";
 
 interface Props {
   messages: ToolMessages;
@@ -498,10 +499,11 @@ export default function HideDataOnPdf({ messages }: Props) {
                 <button
                   type="button"
                   className="btn btn--secondary btn--sm"
-                  style={{ color: "var(--color-error)", borderColor: "var(--color-error)" }}
+                  style={{ color: "var(--color-error)", borderColor: "var(--color-error)", display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
                   onClick={() => deleteRedaction(selectedBox.id)}
                 >
-                  🗑️ Delete Selected
+                  <TrashIcon size={14} />
+                  Delete Selected
                 </button>
               )}
             </div>
@@ -552,7 +554,7 @@ export default function HideDataOnPdf({ messages }: Props) {
           </div>
 
           <p className="redact-hint">
-            🖱️ <strong>Click & drag</strong> across text or areas on the document to blackout. Click any box to select and edit its label/color. Use <strong>×</strong> to delete.
+            <strong>Click & drag</strong> across text or areas on the document to blackout. Click any box to select and edit its label/color. Use <strong>×</strong> to delete.
           </p>
 
           {/* ── 2. INTERACTIVE REDACTION CANVAS ── */}
@@ -634,8 +636,9 @@ export default function HideDataOnPdf({ messages }: Props) {
           {/* ── 3. SUMMARY & DOWNLOAD ── */}
           <div className="redact-footer">
             <div className="redact-stats">
-              <span>
-                🔒 <strong>{redactions.length}</strong> total redaction{redactions.length !== 1 ? "s" : ""} on document ({currentPageRedactions.length} on this page)
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                <ShieldLockIcon size={16} />
+                <strong>{redactions.length}</strong> total redaction{redactions.length !== 1 ? "s" : ""} on document ({currentPageRedactions.length} on this page)
               </span>
             </div>
 
@@ -644,17 +647,22 @@ export default function HideDataOnPdf({ messages }: Props) {
               className="btn btn--primary btn--block redact-download-btn"
               disabled={state === "processing" || redactions.length === 0}
               onClick={bake}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
             >
+              <DownloadIcon size={18} />
               {state === "processing"
                 ? messages.processing
                 : redactions.length === 0
                 ? "Draw a redaction box above to download"
-                : "📥 Apply Permanent Redactions & Download PDF"}
+                : "Apply Permanent Redactions & Download PDF"}
             </button>
           </div>
 
-          <p className="legal-note">
-            🛡️ <strong>100% Client-Side Privacy:</strong> All redactions are applied directly in your browser. Sensitive contents are permanently covered before download, and your files are never uploaded to any server.
+          <p className="legal-note" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <ShieldLockIcon size={16} />
+            <span>
+              <strong>100% Client-Side Privacy:</strong> All redactions are applied directly in your browser. Sensitive contents are permanently covered before download, and your files are never uploaded to any server.
+            </span>
           </p>
         </div>
       )}

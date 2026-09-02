@@ -889,3 +889,1009 @@
   color: #8a6d1a;
   font-size: 0.85rem;
 }
+
+/* ═════════════════════════════════════════════════════════════════
+   PDF Studio / All-in-One Multi-Tool Workspace
+═════════════════════════════════════════════════════════════════ */
+.studio-wrapper {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.studio-app {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+/* Top Action Header */
+.studio-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface-warm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.studio-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.studio-file-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.studio-page-badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+.studio-header-center {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.studio-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.studio-merge-btn {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+.studio-save-btn {
+  font-weight: 700;
+  padding: 0.4rem 0.9rem;
+}
+
+/* Tool Ribbon */
+.studio-toolbar-ribbon {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.studio-tools-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.6rem;
+}
+.studio-tool-tab {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-warm);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.studio-tool-tab:hover {
+  border-color: var(--color-accent);
+}
+.studio-tool-tab.is-active {
+  background: var(--color-accent-tint);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Sub-toolbar controls */
+.studio-sub-toolbar {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+.studio-options-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+.studio-prop-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.studio-chip {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-warm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.studio-chip:hover,
+.studio-chip.is-active {
+  background: var(--color-accent-tint);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.studio-text-mini {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.82rem;
+  min-width: 150px;
+}
+.studio-num-mini {
+  width: 60px;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.82rem;
+}
+.studio-color-picker {
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.studio-color-group,
+.studio-input-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.studio-hint {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+.studio-delete-active-btn {
+  color: var(--color-error);
+  border-color: var(--color-error);
+  margin-left: auto;
+}
+
+/* Signature Panel in Studio */
+.studio-sign-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+}
+.studio-sign-nav {
+  display: flex;
+  gap: 0.4rem;
+}
+.studio-sig-draw-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.studio-sig-canvas {
+  background: #ffffff;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: crosshair;
+  touch-action: none;
+}
+.studio-sig-type-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.studio-sig-upload-row,
+.studio-sig-camera-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.studio-camera-feed {
+  width: 160px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: #000;
+}
+.studio-active-sig-badge,
+.studio-active-stamp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-accent);
+  font-weight: 600;
+}
+.studio-active-sig-badge img,
+.studio-active-stamp-badge img {
+  max-height: 28px;
+  max-width: 80px;
+  object-fit: contain;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+}
+
+/* Document Viewport & Canvas */
+.studio-viewport-area {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: auto;
+  min-height: 480px;
+  max-height: 85vh;
+  background: #e2e8f0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 1.5rem 1rem;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+.studio-canvas-container {
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+  border-radius: 3px;
+  line-height: 0;
+  overflow: visible;
+  user-select: none;
+  margin: 0 auto;
+}
+.studio-pdf-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #ffffff;
+  border-radius: 3px;
+}
+
+/* Annotation Elements on PDF */
+.studio-annotation-item {
+  position: absolute;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.studio-annotation-item:hover,
+.studio-annotation-item.is-selected {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+.studio-annotation-item.is-dragging {
+  cursor: grabbing;
+  opacity: 0.85;
+}
+
+/* Box & Redaction styles */
+.studio-box--black {
+  background: #000000;
+  color: #ffffff;
+}
+.studio-box--white {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+}
+.studio-box--slate {
+  background: #1e293b;
+  color: #ffffff;
+}
+.studio-drawing-box {
+  position: absolute;
+  pointer-events: none;
+  z-index: 15;
+  outline: 2px dashed var(--color-accent);
+  opacity: 0.75;
+}
+.studio-redact-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Text Item */
+.studio-text-item {
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px dashed rgba(0, 0, 0, 0.2);
+}
+.studio-live-text {
+  font-weight: 600;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Image & Signature Item */
+.studio-image-item {
+  background: rgba(255, 46, 46, 0.04);
+  border: 1px dashed var(--color-accent);
+}
+.studio-overlay-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+/* Cross Delete Button */
+.studio-item-delete {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 22px;
+  height: 22px;
+  background: #dc2626;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.9;
+  z-index: 35;
+  pointer-events: auto;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.studio-annotation-item:hover .studio-item-delete,
+.studio-annotation-item.is-selected .studio-item-delete {
+  opacity: 1;
+  transform: scale(1.05);
+}
+.studio-item-delete:hover {
+  background: #b91c1c;
+  transform: scale(1.25);
+}
+
+/* Corner Resize Handle */
+.studio-item-resize {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 12px;
+  height: 12px;
+  background: var(--color-accent);
+  border: 2px solid #ffffff;
+  border-radius: 2px;
+  cursor: nwse-resize;
+  touch-action: none;
+  opacity: 0.9;
+  z-index: 30;
+  pointer-events: auto;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PDF Form Filler Styles (Clean, Uncluttered & Modern)
+   ───────────────────────────────────────────────────────────── */
+.form-filler-app {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 1rem;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+/* 1. Unified Slim Top Bar */
+.form-unified-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.85rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-bottom: 1px solid var(--color-border);
+  min-height: 48px;
+  box-sizing: border-box;
+}
+
+.form-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.form-bar-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.form-pagination-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: var(--color-surface-warm);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.1rem 0.3rem;
+  flex-shrink: 0;
+}
+
+.form-mini-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  line-height: 1;
+  transition: background 0.15s ease;
+}
+
+.form-mini-btn:hover:not(:disabled) {
+  background: var(--color-surface);
+}
+
+.form-mini-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.form-page-num {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 0 0.2rem;
+  user-select: none;
+}
+
+/* Central Segmented Control */
+.form-segmented-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--color-surface-warm);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.form-tool-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.form-tool-tab:hover {
+  color: var(--color-text);
+}
+
+.form-tool-tab.is-active {
+  color: var(--color-text);
+  background: var(--color-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Bar Right Section */
+.form-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.form-zoom-pill {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-surface-warm);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.1rem 0.25rem;
+}
+
+.form-zoom-val-btn {
+  background: transparent;
+  border: none;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+  min-width: 42px;
+  text-align: center;
+}
+
+.form-icon-action-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.form-icon-action-btn:hover {
+  background: var(--color-surface-warm);
+}
+
+.form-icon-action-btn.is-active {
+  background: var(--color-accent);
+  color: #ffffff;
+  border-color: var(--color-accent);
+}
+
+.form-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.85rem !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+}
+
+/* 2. Contextual Secondary Strip (Ultra Slim) */
+.form-context-strip {
+  background: var(--color-surface-warm);
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.4rem 0.85rem;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.form-context-inner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.form-clean-input {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.84rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  min-width: 220px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-clean-input:focus {
+  border-color: var(--color-accent);
+}
+
+.form-font-size-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.1rem 0.3rem;
+}
+
+.form-size-chip {
+  background: transparent;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text);
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  line-height: 1;
+}
+
+.form-size-val {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  min-width: 32px;
+  text-align: center;
+}
+
+.form-color-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.form-ink-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px var(--color-border);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-ink-dot.is-active {
+  box-shadow: 0 0 0 2px var(--color-accent);
+  transform: scale(1.15);
+}
+
+.form-bold-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.form-bold-btn.is-active {
+  background: var(--color-text);
+  color: var(--color-surface);
+  border-color: var(--color-text);
+}
+
+.form-quick-tip {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  margin-left: auto;
+}
+
+.form-sign-pill-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.form-sign-pill {
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.form-sign-pill.is-active {
+  background: var(--color-surface-warm);
+  color: var(--color-text);
+}
+
+.form-draw-compact,
+.form-type-compact,
+.form-upload-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-sig-canvas-compact {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: #ffffff;
+  cursor: crosshair;
+}
+
+.form-font-pill {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.form-font-pill.is-active {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.form-ready-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: #15803d;
+  font-weight: 600;
+}
+
+.form-ready-badge img {
+  height: 20px;
+  max-width: 60px;
+  object-fit: contain;
+}
+
+/* 3. Document Canvas Viewport */
+.form-workspace-viewport {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 2rem 1.5rem;
+  background: #cbd5e1;
+  border: 1px solid var(--color-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  overflow: auto;
+  min-height: 75vh;
+  max-height: 85vh;
+}
+
+.form-doc-container {
+  position: relative;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  background: #ffffff;
+  user-select: none;
+}
+
+.form-page-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* 4. Sleek Document Overlays (Clean & Non-distracting) */
+.form-item-overlay {
+  position: absolute;
+  cursor: grab;
+  border: 1.5px solid transparent;
+  border-radius: 3px;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  padding: 1px 3px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.form-item-overlay:hover {
+  border-color: rgba(37, 99, 235, 0.4);
+  background: rgba(37, 99, 235, 0.03);
+}
+
+.form-item-overlay.is-selected {
+  border-color: #2563eb;
+  background: rgba(37, 99, 235, 0.06);
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+}
+
+.form-item-overlay.is-dragging {
+  cursor: grabbing;
+  opacity: 0.85;
+}
+
+.form-item-text {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.form-item-symbol {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  display: inline-block;
+}
+
+.form-item-sig-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* Subtle Floating Delete Button */
+.form-floating-del-btn {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 18px;
+  height: 18px;
+  background: #ef4444;
+  color: #ffffff;
+  border: 1.5px solid #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 35;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.form-floating-del-btn:hover {
+  background: #dc2626;
+  transform: scale(1.15);
+}
+
+.form-item-resize {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  background: #2563eb;
+  border: 1px solid #ffffff;
+  border-radius: 2px;
+  cursor: nwse-resize;
+  z-index: 30;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Wide Layout & Fullscreen Modes
+   ───────────────────────────────────────────────────────────── */
+.tool-page--wide {
+  max-width: 1560px !important;
+  width: 96vw;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+/* True Fullscreen Viewport Mode */
+.form-filler-app.is-fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 99999 !important;
+  background: #090d16 !important;
+  padding: 0.5rem 0.75rem !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  box-sizing: border-box;
+}
+
+.form-filler-app.is-fullscreen .form-unified-bar {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.form-filler-app.is-fullscreen .form-bar-title,
+.form-filler-app.is-fullscreen .form-mini-btn,
+.form-filler-app.is-fullscreen .form-zoom-val-btn {
+  color: #f8fafc !important;
+}
+
+.form-filler-app.is-fullscreen .form-pagination-pill,
+.form-filler-app.is-fullscreen .form-segmented-tools,
+.form-filler-app.is-fullscreen .form-zoom-pill {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+.form-filler-app.is-fullscreen .form-tool-tab {
+  color: #94a3b8 !important;
+}
+
+.form-filler-app.is-fullscreen .form-tool-tab:hover {
+  color: #f8fafc !important;
+}
+
+.form-filler-app.is-fullscreen .form-tool-tab.is-active {
+  color: #ffffff !important;
+  background: #334155 !important;
+}
+
+.form-filler-app.is-fullscreen .form-icon-action-btn {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.form-filler-app.is-fullscreen .form-context-strip {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+.form-filler-app.is-fullscreen .form-clean-input {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.form-filler-app.is-fullscreen .form-font-size-control,
+.form-filler-app.is-fullscreen .form-bold-btn,
+.form-filler-app.is-fullscreen .form-sign-pill-tabs {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.form-filler-app.is-fullscreen .form-size-chip {
+  color: #f8fafc !important;
+}
+
+.form-filler-app.is-fullscreen .form-quick-tip {
+  color: #64748b !important;
+}
+
+.form-filler-app.is-fullscreen .form-workspace-viewport {
+  flex: 1 !important;
+  max-height: calc(100vh - 110px) !important;
+  height: calc(100vh - 110px) !important;
+  background: #111827 !important;
+  border-color: #334155 !important;
+}
+
+.form-filler-app.is-fullscreen .legal-note,
+.form-filler-app.is-fullscreen .form-footer-summary {
+  display: none !important;
+}
+
+

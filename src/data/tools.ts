@@ -155,6 +155,18 @@ export const tools: ToolDef[] = [
     },
     related: ["hide-data-on-pdf", "merge-pdf", "lock-pdf"],
   },
+  {
+    id: "fill-pdf-form",
+    component: "FillFormPdf",
+    processing: "client",
+    slug: { [en]: "fill-pdf-form", [de]: "pdf-formular-ausfuellen" },
+    label: { [en]: "Fill & Sign PDF", [de]: "PDF ausfüllen & signieren" },
+    summary: {
+      [en]: "Fill out PDF forms, write on blank lines, stamp checkmarks, dates, and sign.",
+      [de]: "PDF-Formulare ausfüllen, Leerzeilen beschriften, Häkchen setzen und signieren.",
+    },
+    related: ["sign-pdf", "hide-data-on-pdf", "merge-pdf"],
+  },
 ];
 
 const byId = new Map(tools.map((t) => [t.id, t]));

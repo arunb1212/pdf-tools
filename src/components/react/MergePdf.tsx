@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
 import { formatBytes, loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
+import { ArrowUpIcon, ArrowDownIcon, CloseIcon } from "./Icons";
 
 interface Props {
   messages: ToolMessages;
@@ -94,7 +95,7 @@ export default function MergePdf({ messages }: Props) {
                 onClick={() => setFiles((prev) => reorder(prev, i, i - 1))}
                 aria-label={`Move ${file.name} up`}
               >
-                ↑
+                <ArrowUpIcon size={14} />
               </button>
               <button
                 type="button"
@@ -103,7 +104,7 @@ export default function MergePdf({ messages }: Props) {
                 onClick={() => setFiles((prev) => reorder(prev, i, i + 1))}
                 aria-label={`Move ${file.name} down`}
               >
-                ↓
+                <ArrowDownIcon size={14} />
               </button>
               <button
                 type="button"
@@ -112,7 +113,7 @@ export default function MergePdf({ messages }: Props) {
                 onClick={() => remove(i)}
                 aria-label={`Remove ${file.name}`}
               >
-                ✕
+                <CloseIcon size={14} />
               </button>
             </li>
           ))}

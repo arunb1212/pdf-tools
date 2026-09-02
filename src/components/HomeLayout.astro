@@ -27,6 +27,7 @@ const homeTools = [
   "jpg-to-csv",
   "hide-data-on-pdf",
   "sign-pdf",
+  "fill-pdf-form",
 ].map((id) => getTool(id)!).filter(Boolean);
 
 const path = locale === "en" ? "/" : "/de/";
@@ -86,9 +87,23 @@ const jsonLd = [
       <div class="container hero__inner">
         <h1>{t.heroTitle}</h1>
         <p class="hero__subtitle">{t.heroSubtitle}</p>
-        <a class="btn btn--primary hero__cta" href="#tools">{t.heroCta}</a>
+        <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+          <a class="btn btn--primary hero__cta" href="#tools">{t.heroCta}</a>
+          <a class="btn btn--secondary hero__cta" href={locale === "en" ? "/editor/" : "/de/editor/"} style="border-color: var(--color-accent); color: var(--color-accent); display: inline-flex; align-items: center; gap: 0.4rem;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+              <path d="M5 3v4" />
+              <path d="M19 17v4" />
+            </svg>
+            {locale === "en" ? "Open All-in-One Studio" : "All-in-One Studio öffnen"}
+          </a>
+        </div>
         <p class="hero__trust">
-          <span aria-hidden="true">🔒</span> {t.trustLine} · {t.fullyClientSide}
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align: -2px; margin-right: 4px;">
+            <rect x="3" y="11" width="18" height="11" rx="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          {t.trustLine} · {t.fullyClientSide}
         </p>
       </div>
     </section>

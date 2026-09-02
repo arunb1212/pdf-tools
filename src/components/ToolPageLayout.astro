@@ -17,6 +17,7 @@ import PdfToCsv from "./react/PdfToCsv.tsx";
 import JpgToCsv from "./react/JpgToCsv.tsx";
 import HideDataOnPdf from "./react/HideDataOnPdf.tsx";
 import SignPdf from "./react/SignPdf.tsx";
+import FillFormPdf from "./react/FillFormPdf.tsx";
 
 interface Props {
   entry: CollectionEntry<"tools">;
@@ -105,7 +106,10 @@ const isBuilt = [
   "JpgToCsv",
   "HideDataOnPdf",
   "SignPdf",
+  "FillFormPdf",
 ].includes(data.component);
+
+const isWideTool = ["FillFormPdf", "SignPdf", "HideDataOnPdf"].includes(data.component);
 ---
 
 <BaseLayout
@@ -119,7 +123,7 @@ const isBuilt = [
   <Header locale={locale} languagePaths={languagePaths} />
 
   <main id="main-content">
-    <article class="container tool-page">
+    <article class:list={["container", "tool-page", { "tool-page--wide": isWideTool }]}>
       <header class="tool-page__header">
         <span class="tool-badge" data-processing={data.processing}>
           {data.processing === "client" ? t.fullyClientSide : t.serverFallback}
@@ -143,6 +147,7 @@ const isBuilt = [
               {data.component === "JpgToCsv" && <JpgToCsv client:visible messages={messages} />}
               {data.component === "HideDataOnPdf" && <HideDataOnPdf client:visible messages={messages} />}
               {data.component === "SignPdf" && <SignPdf client:visible messages={messages} />}
+              {data.component === "FillFormPdf" && <FillFormPdf client:visible messages={messages} locale={locale} />}
             </>
           ) : (
             <p class="coming-soon">{t.unsupportedFile}</p>
@@ -150,7 +155,11 @@ const isBuilt = [
         }
         {data.processing === "client" && (
           <p class="trust-line">
-            <span aria-hidden="true">🔒</span> {t.trustLine}
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align: -2px; margin-right: 4px;">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            {t.trustLine}
           </p>
         )}
       </section>

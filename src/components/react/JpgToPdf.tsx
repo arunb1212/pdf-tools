@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
 import { formatBytes, loadJsPDF, type ToolMessages } from "@/lib/pdf";
+import { CloseIcon } from "./Icons";
 
 interface Props {
   messages: ToolMessages;
@@ -130,7 +131,7 @@ export default function JpgToPdf({ messages }: Props) {
                 onClick={() => remove(i)}
                 aria-label={`Remove ${file.name}`}
               >
-                ✕
+                <CloseIcon size={14} />
               </button>
             </li>
           ))}

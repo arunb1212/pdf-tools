@@ -2,6 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
 import { loadPdfJs, loadPdfLib, loadJsPDF, pdfBlob, type ToolMessages } from "@/lib/pdf";
+import {
+  PenToolIcon,
+  TextIcon,
+  ImageIcon,
+  CameraIcon,
+  DownloadIcon,
+  MoveIcon,
+} from "./Icons";
 
 interface Props {
   messages: ToolMessages;
@@ -620,8 +628,9 @@ export default function SignPdf({ messages }: Props) {
           {/* ── 1. SIGNATURE CREATION OPTIONS (TOP) ── */}
           <div className="sign-tools-panel" style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
             <div className="sign-tools-summary" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.75rem 1rem", background: "var(--color-surface-warm)", borderBottom: "1px solid var(--color-border)" }}>
-              <span className="sign-tools-title" style={{ fontWeight: 700, fontSize: "1rem" }}>
-                {signatureUrl ? "✍️ Signature Created" : "✍️ Step 1: Create or Choose Your Signature"}
+              <span className="sign-tools-title" style={{ fontWeight: 700, fontSize: "1rem", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                <PenToolIcon size={18} />
+                {signatureUrl ? "Signature Ready" : "Step 1: Create or Choose Your Signature"}
               </span>
               {signatureUrl && (
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -642,8 +651,10 @@ export default function SignPdf({ messages }: Props) {
                     setMode("draw");
                     setTimeout(initDrawCanvas, 50);
                   }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
                 >
-                  ✍️ Draw
+                  <PenToolIcon size={15} />
+                  Draw
                 </button>
                 <button
                   type="button"
@@ -653,8 +664,10 @@ export default function SignPdf({ messages }: Props) {
                     setMode("type");
                     if (typed) generateTypedSignature(typed, selectedFont);
                   }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
                 >
-                  ⌨️ Type
+                  <TextIcon size={15} />
+                  Type
                 </button>
                 <button
                   type="button"
@@ -663,8 +676,10 @@ export default function SignPdf({ messages }: Props) {
                     stopCamera();
                     setMode("upload");
                   }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
                 >
-                  🖼️ Upload Scan
+                  <ImageIcon size={15} />
+                  Upload Scan
                 </button>
                 <button
                   type="button"
@@ -673,8 +688,10 @@ export default function SignPdf({ messages }: Props) {
                     setMode("camera");
                     startCamera();
                   }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
                 >
-                  📷 Camera Scan
+                  <CameraIcon size={15} />
+                  Camera Scan
                 </button>
               </div>
 
@@ -958,7 +975,10 @@ export default function SignPdf({ messages }: Props) {
                     }}
                     onPointerDown={handleMarkerPointerDown}
                   >
-                    <span className="sign-marker-badge">✋ Drag to move</span>
+                    <span className="sign-marker-badge" style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                      <MoveIcon size={12} strokeWidth={2.5} />
+                      Drag to move
+                    </span>
                     <button
                       type="button"
                       className="sign-delete-btn"
@@ -988,17 +1008,17 @@ export default function SignPdf({ messages }: Props) {
 
             {!signatureUrl && (
               <p className="sign-hint">
-                👆 Create or upload your signature above, then click anywhere on the document to place it.
+                Create or upload your signature above, then click anywhere on the document to place it.
               </p>
             )}
             {signatureUrl && !placed && (
               <p className="sign-hint">
-                👆 Click anywhere on the document above to place your signature.
+                Click anywhere on the document above to place your signature.
               </p>
             )}
             {signatureUrl && placed && (
               <p className="sign-hint">
-                ✋ <strong>Drag & move</strong> the signature directly on the document, or click to reposition. Use the resize handle (↘) in the corner to change size.
+                <strong>Drag & move</strong> the signature directly on the document, or click to reposition. Use the corner handle to resize.
               </p>
             )}
           </div>
@@ -1010,8 +1030,10 @@ export default function SignPdf({ messages }: Props) {
               className="btn btn--primary btn--block sign-download-btn"
               disabled={state === "processing"}
               onClick={bake}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
             >
-              {state === "processing" ? messages.processing : "📥 Download Signed PDF"}
+              <DownloadIcon size={18} />
+              {state === "processing" ? messages.processing : "Download Signed PDF"}
             </button>
           )}
 
