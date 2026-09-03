@@ -513,6 +513,18 @@
 .sign-size-control input[type="range"] {
   width: 90px;
 }
+/* Rotation slider next to the size control (sign + fill-form). */
+.form-rotate-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+.form-rotate-control input[type="range"] {
+  width: 90px;
+}
 .btn--sm {
   padding: 0.3rem 0.6rem;
   font-size: 0.8rem;
@@ -531,6 +543,56 @@
   align-items: flex-start;
   padding: 1.5rem 1rem;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Scrollable all-pages view (multi-stamp signing) */
+.sign-pages-scroll {
+  border: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  background: #e8ecf0;
+  max-height: 82vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem 1rem;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.06);
+  scroll-padding-top: 0.75rem;
+}
+.sign-pages-scroll .sign-page-wrap {
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  min-height: 0;
+  max-height: none;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  display: block;
+}
+.sign-page-label {
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 0.5rem;
+}
+.sign-jump-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.sign-jump-control input {
+  width: 3.5rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font: inherit;
+  text-align: center;
 }
 .sign-page-container {
   position: relative;

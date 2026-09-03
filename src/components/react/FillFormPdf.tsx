@@ -40,6 +40,9 @@ export interface FormItem {
   isBold?: boolean;
   sigUrl?: string;
   sigBytes?: Uint8Array;
+  /** Clockwise degrees. Preview rotates about the bottom-left corner,
+      bake uses the negated pdf-lib angle around the same corner. */
+  rotation?: number;
 }
 
 const DISPLAY_SCALE = 1.4;
@@ -201,8 +204,8 @@ export default function FillFormPdf({ messages, locale = "en" }: Props) {
         id: newId,
         type: "text",
         page: pageNum,
-        x: Math.max(0, Math.min(0.85, x)),
-        y: Math.max(0, Math.min(0.95, y - 0.015)),
+        x: Math.max(0, Math.min(1, x)),
+        y: Math.max(0, Math.min(1, y - 0.015)),
         width: 0.28,
         height: 0.038,
         text: inputText.trim() || "Text",
@@ -243,8 +246,8 @@ export default function FillFormPdf({ messages, locale = "en" }: Props) {
         id: newId,
         type: "date",
         page: pageNum,
-        x: Math.max(0, Math.min(0.85, x)),
-        y: Math.max(0, Math.min(0.95, y - 0.015)),
+        x: Math.max(0, Math.min(1, x)),
+        y: Math.max(0, Math.min(1, y - 0.015)),
         width: 0.22,
         height: 0.035,
         text: dateText || todayIso,
@@ -299,8 +302,8 @@ export default function FillFormPdf({ messages, locale = "en" }: Props) {
       const deltaX = (ev.clientX - startClientX) / canvasRect.width;
       const deltaY = (ev.clientY - startClientY) / canvasRect.height;
 
-      const newX = Math.max(0, Math.min(1 - item.width, initialX + deltaX));
-      const newY = Math.max(0, Math.min(1 - item.height, initialY + deltaY));
+      const newX = Math.max(0, Math.min(1, initialX + deltaX));
+      const newY = Math.max(0, Math.min(1, initialY + deltaY));
 
       setItems((prev) =>
         prev.map((it) => (it.id === item.id ? { ...it, x: newX, y: newY } : it))
@@ -453,7 +456,7 @@ export default function FillFormPdf({ messages, locale = "en" }: Props) {
     setState("processing");
 
     try {
-      const { PDFDocument, rgb, StandardFonts } = await loadPdfLib();
+      const { PDFDocument, rgb, StandardFonts, degrees } = await loadPdfLib();
       const doc = await PDFDocument.load(rawPdfBytes.slice(), { ignoreEncryption: true });
       const helvetica = await doc.embedFont(StandardFonts.Helvetica);
       const helveticaBold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -489,6 +492,7 @@ export default function FillFormPdf({ messages, locale = "en" }: Props) {
             size: fSize,
             font: item.isBold ? helveticaBold : helvetica,
             color: rgb(r, g, b),
+            rotate: degrees(-(item.rotation ?? 0)),
           });
         } else if (item.type === "check") {
           // Draw checkmark using standard checkmark character or ZapfDingbats
@@ -501,6 +505,7 @@ export default function FillFormPdf({ messages, locale = "en" }: Props) {
               size: fSize,
               font: zapfDingbats,
               color: rgb(r, g, b),
+              rotate: degrees(-(item.rotation ?? 0)),
             });
           } catch {
             page.drawText("✓", {
@@ -509,6 +514,7 @@ export default function FillFormPdf({ messages, locale = "en" }: Props) {
               size: fSize,
               font: helveticaBold,
               color: rgb(r, g, b),
+              rotate: degrees(-(item.rotation ?? 0)),
             });
           }
         } else if (item.type === "cross") {
@@ -521,6 +527,7 @@ export default function FillFormPdf({ messages, locale = "en" }: Props) {
               size: fSize,
               font: zapfDingbats,
               color: rgb(r, g, b),
+              rotate: degrees(-(item.rotation ?? 0)),
             });
           } catch {
             page.drawText("✕", {
@@ -529,6 +536,7 @@ export default function FillFormPdf({ messages, locale = "en" }: Props) {
               size: fSize,
               font: helveticaBold,
               color: rgb(r, g, b),
+              rotate: degrees(-(item.rotation ?? 0)),
             });
           }
         } else if (item.type === "sign" && item.sigBytes) {
@@ -539,6 +547,7 @@ export default function FillFormPdf({ messages, locale = "en" }: Props) {
               y: rectY,
               width: rectW,
               height: rectH,
+              rotate: degrees(-(item.rotation ?? 0)),
             });
           } catch (err) {
             console.warn("Signature embedding error:", err);
@@ -979,14 +988,35 @@ export default function FillFormPdf({ messages, locale = "en" }: Props) {
               <div className="form-context-inner">
                 <span className="form-quick-tip">Click and drag any placed item to reposition or resize</span>
                 {selectedItem && (
-                  <button
-                    type="button"
-                    className="btn btn--secondary btn--sm"
-                    style={{ color: "var(--color-error)", borderColor: "var(--color-error)" }}
-                    onClick={() => deleteItem(selectedItem.id)}
-                  >
-                    Delete Selected
-                  </button>
+                  <>
+                    <label className="form-rotate-control">
+                      <span>
+                        {messages.rotationLabel} ({selectedItem.rotation ?? 0}°):
+                      </span>
+                      <input
+                        type="range"
+                        min={-180}
+                        max={180}
+                        step={5}
+                        value={selectedItem.rotation ?? 0}
+                        onChange={(e) =>
+                          setItems((prev) =>
+                            prev.map((it) =>
+                              it.id === selectedItem.id ? { ...it, rotation: Number(e.target.value) } : it,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="btn btn--secondary btn--sm"
+                      style={{ color: "var(--color-error)", borderColor: "var(--color-error)" }}
+                      onClick={() => deleteItem(selectedItem.id)}
+                    >
+                      Delete Selected
+                    </button>
+                  </>
                 )}
               </div>
             )}
@@ -1016,6 +1046,8 @@ export default function FillFormPdf({ messages, locale = "en" }: Props) {
                       top: `${item.y * 100}%`,
                       width: `${item.width * 100}%`,
                       height: `${item.height * 100}%`,
+                      transform: `rotate(${item.rotation ?? 0}deg)`,
+                      transformOrigin: "left bottom",
                     }}
                     onPointerDown={(e) => handleItemPointerDown(e, item)}
                   >

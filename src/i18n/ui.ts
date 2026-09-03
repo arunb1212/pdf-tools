@@ -133,6 +133,11 @@ export const ui = {
     doneFormFilled: "Form completed with {n} entries",
     trustLineServer: "Encrypted in transit, deleted from the server instantly.",
     badgeServer: "Secure server · browser fallback",
+    doneSignedMany: "Signatures applied in {n} places",
+    jumpLabel: "Page",
+    jumpGo: "Go",
+    rotationLabel: "Rotation",
+    signHintMulti: "Click any page to stamp another signature — drag to move, × to remove.",
   }),
   de: make("de", {
     siteName: "PDF Tools",
@@ -252,6 +257,11 @@ export const ui = {
     doneFormFilled: "Formular mit {n} Einträgen fertig",
     trustLineServer: "Verschlüsselt übertragen, sofort vom Server gelöscht.",
     badgeServer: "Sicherer Server · Browser-Fallback",
+    doneSignedMany: "Signaturen an {n} Stellen eingefügt",
+    jumpLabel: "Seite",
+    jumpGo: "Los",
+    rotationLabel: "Drehung",
+    signHintMulti: "Klicke auf eine Seite für eine weitere Signatur — ziehen zum Verschieben, × zum Entfernen.",
   }),
 } as const;
 

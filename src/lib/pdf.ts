@@ -69,6 +69,11 @@ export interface ToolMessages {
   doneFormFilled: string;
   trustLineServer: string;
   badgeServer: string;
+  doneSignedMany: string;
+  jumpLabel: string;
+  jumpGo: string;
+  rotationLabel: string;
+  signHintMulti: string;
 }
 
 // Fill a "{placeholder}" template, e.g. fmt(t.doneRows, { n: 5, size: "12 KB" }).

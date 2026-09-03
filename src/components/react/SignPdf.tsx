@@ -18,6 +18,20 @@ interface Props {
 
 type Mode = "draw" | "type" | "upload" | "camera";
 
+// One stamped signature. x/y is the stamp CENTER in page fractions —
+// 0 and 1 are the page edges, so stamps can sit exactly at the edge
+// (anything hanging off the page is clipped by the PDF itself).
+interface Stamp {
+  id: number;
+  page: number; // 1-indexed
+  x: number; // [0..1]
+  y: number; // [0..1]
+}
+
+function clamp01(v: number): number {
+  return Math.max(0, Math.min(1, v));
+}
+
 const DISPLAY_SCALE = 1.5;
 
 // Extract signature ink from white paper background
@@ -137,19 +151,20 @@ export default function SignPdf({ messages }: Props) {
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Signature and placement
+  // Signature and stamps (multiple placements per session)
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [sigScale, setSigScale] = useState<number>(28); // % of page width
-  const [placed, setPlaced] = useState<{ x: number; y: number } | null>(null);
-  const [placedPage, setPlacedPage] = useState<number>(1);
+  const [rotation, setRotation] = useState<number>(0); // degrees, clockwise
+  const [stamps, setStamps] = useState<Stamp[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const nextStampId = useRef(1);
 
-  // PDF Preview and document
+  // PDF Preview and document (all pages in a scrollable view)
   const [pdfDoc, setPdfDoc] = useState<any>(null);
-  const [pageNum, setPageNum] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const pageCanvasRef = useRef<HTMLCanvasElement>(null);
-  const pageWrapRef = useRef<HTMLDivElement>(null);
+  const [jumpText, setJumpText] = useState("1");
+  const pageCanvasRefs = useRef<Array<HTMLCanvasElement | null>>([]);
+  const pageBlockRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   // Tool state
   const [state, setState] = useState<"idle" | "processing" | "done" | "error">("idle");
@@ -182,9 +197,11 @@ export default function SignPdf({ messages }: Props) {
       return;
     }
     setFile(f);
-    setPageNum(1);
     setState("idle");
     setDoneLabel(null);
+    setStamps([]);
+    nextStampId.current = 1;
+    setJumpText("1");
     if (downloadUrl) URL.revokeObjectURL(downloadUrl);
     setDownloadUrl(null);
 
@@ -203,37 +220,38 @@ export default function SignPdf({ messages }: Props) {
       const pdf = await pdfjs.getDocument({ data }).promise;
       setPdfDoc(pdf);
       setTotalPages(pdf.numPages);
-      setPlaced({ x: 0.5, y: 0.75 });
-      setPlacedPage(1);
     } catch (err) {
       console.error("PDF load error:", err);
       setState("error");
     }
   }
 
-  // Render current PDF page to preview canvas
+  // Render every page into the scrollable preview (one canvas per page).
   useEffect(() => {
     let active = true;
-    async function renderPage() {
-      if (!pdfDoc || !pageCanvasRef.current) return;
-      try {
-        const page = await pdfDoc.getPage(pageNum);
-        const viewport = page.getViewport({ scale: DISPLAY_SCALE });
-        const canvas = pageCanvasRef.current;
-        if (!canvas || !active) return;
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext("2d")!;
-        await page.render({ canvasContext: ctx, viewport }).promise;
-      } catch (err) {
-        console.error("Failed to render PDF page:", err);
+    async function renderAll() {
+      if (!pdfDoc) return;
+      for (let p = 1; p <= pdfDoc.numPages; p++) {
+        if (!active) return;
+        try {
+          const page = await pdfDoc.getPage(p);
+          const viewport = page.getViewport({ scale: DISPLAY_SCALE });
+          const canvas = pageCanvasRefs.current[p - 1];
+          if (!canvas || !active) return;
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext("2d")!;
+          await page.render({ canvasContext: ctx, viewport }).promise;
+        } catch (err) {
+          console.error("Failed to render PDF page:", err);
+        }
       }
     }
-    renderPage();
+    renderAll();
     return () => {
       active = false;
     };
-  }, [pdfDoc, pageNum]);
+  }, [pdfDoc]);
 
   // --- Draw Mode Handlers ---
   function initDrawCanvas() {
@@ -280,10 +298,6 @@ export default function SignPdf({ messages }: Props) {
     const canvas = drawRef.current;
     if (canvas) {
       setSignatureUrl(canvas.toDataURL("image/png"));
-      if (!placed) {
-        setPlaced({ x: 0.5, y: 0.75 });
-        setPlacedPage(pageNum);
-      }
     }
   }
 
@@ -309,10 +323,6 @@ export default function SignPdf({ messages }: Props) {
     ctx.textBaseline = "middle";
     ctx.fillText(text, c.width / 2, c.height / 2);
     setSignatureUrl(c.toDataURL("image/png"));
-    if (!placed) {
-      setPlaced({ x: 0.5, y: 0.75 });
-      setPlacedPage(pageNum);
-    }
   }
 
   // --- Upload / Paper Extraction Handlers ---
@@ -344,10 +354,6 @@ export default function SignPdf({ messages }: Props) {
         setRawImageCanvas(c);
         const extracted = extractSignatureFromCanvas(c, threshold);
         setSignatureUrl(extracted);
-        if (!placed) {
-          setPlaced({ x: 0.5, y: 0.75 });
-          setPlacedPage(pageNum);
-        }
       };
       img.src = ev.target?.result as string;
     };
@@ -390,10 +396,6 @@ export default function SignPdf({ messages }: Props) {
     setRawImageCanvas(c);
     const extracted = extractSignatureFromCanvas(c, threshold);
     setSignatureUrl(extracted);
-    if (!placed) {
-      setPlaced({ x: 0.5, y: 0.75 });
-      setPlacedPage(pageNum);
-    }
   }
 
   // Re-extract if threshold slider changes
@@ -405,25 +407,30 @@ export default function SignPdf({ messages }: Props) {
     }
   }
 
-  // --- Interactive PDF Click & Drag Placement ---
-  function handleCanvasClick(e: React.MouseEvent<HTMLCanvasElement>) {
+  // Click a page to stamp another signature (center may sit exactly at
+  // the page edge — overhang is clipped by the PDF on export).
+  function handleCanvasClick(e: React.MouseEvent<HTMLCanvasElement>, page: number) {
     if (!signatureUrl || isDragging) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    
-    const halfWidthRatio = (sigScale / 100) / 2;
-    const halfHeightRatio = halfWidthRatio * 0.45;
-    
-    setPlaced({
-      x: Math.max(halfWidthRatio, Math.min(1 - halfWidthRatio, x)),
-      y: Math.max(halfHeightRatio, Math.min(1 - halfHeightRatio, y)),
-    });
-    setPlacedPage(pageNum);
+    const x = clamp01((e.clientX - rect.left) / rect.width);
+    const y = clamp01((e.clientY - rect.top) / rect.height);
+
+    setStamps((prev) => [...prev, { id: nextStampId.current++, page, x, y }]);
   }
 
-  // Drag signature box directly on PDF document
-  function handleMarkerPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+  function removeStamp(id: number) {
+    setStamps((prev) => prev.filter((s) => s.id !== id));
+  }
+
+  function jumpToPage() {
+    const n = Math.max(1, Math.min(totalPages, parseInt(jumpText, 10) || 1));
+    setJumpText(String(n));
+    pageBlockRefs.current[n - 1]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // Drag a stamp directly on the document (center clamped to the page,
+  // so stamps can hang off any edge).
+  function handleMarkerPointerDown(e: React.PointerEvent<HTMLDivElement>, stamp: Stamp) {
     // Ignore clicks on child buttons (like delete cross or resize handle)
     const target = e.target as HTMLElement;
     if (target.closest(".sign-delete-btn") || target.closest(".sign-resize-handle")) {
@@ -435,31 +442,21 @@ export default function SignPdf({ messages }: Props) {
     marker.setPointerCapture(e.pointerId);
     setIsDragging(true);
 
-    const canvas = pageCanvasRef.current;
+    const canvas = marker.closest(".sign-page-container")?.querySelector("canvas");
     if (!canvas) return;
     const canvasRect = canvas.getBoundingClientRect();
-    const markerRect = marker.getBoundingClientRect();
 
     const startClientX = e.clientX;
     const startClientY = e.clientY;
-    const initialX = placed ? placed.x : 0.5;
-    const initialY = placed ? placed.y : 0.75;
-
-    const halfW = (markerRect.width / 2) / canvasRect.width;
-    const halfH = (markerRect.height / 2) / canvasRect.height;
+    const initialX = stamp.x;
+    const initialY = stamp.y;
 
     function onPointerMove(ev: PointerEvent) {
       const deltaX = (ev.clientX - startClientX) / canvasRect.width;
       const deltaY = (ev.clientY - startClientY) / canvasRect.height;
 
-      const rawX = initialX + deltaX;
-      const rawY = initialY + deltaY;
-
-      const clampedX = Math.max(halfW, Math.min(1 - halfW, rawX));
-      const clampedY = Math.max(halfH, Math.min(1 - halfH, rawY));
-
-      setPlaced({ x: clampedX, y: clampedY });
-      setPlacedPage(pageNum);
+      const next = { x: clamp01(initialX + deltaX), y: clamp01(initialY + deltaY) };
+      setStamps((prev) => prev.map((s) => (s.id === stamp.id ? { ...s, ...next } : s)));
     }
 
     function onPointerUp(ev: PointerEvent) {
@@ -479,7 +476,7 @@ export default function SignPdf({ messages }: Props) {
     const handle = e.currentTarget;
     handle.setPointerCapture(e.pointerId);
 
-    const canvas = pageCanvasRef.current;
+    const canvas = handle.closest(".sign-page-container")?.querySelector("canvas");
     if (!canvas) return;
     const canvasRect = canvas.getBoundingClientRect();
     const startClientX = e.clientX;
@@ -501,75 +498,103 @@ export default function SignPdf({ messages }: Props) {
     handle.addEventListener("pointerup", onResizeUp);
   }
 
-  // --- Save / Bake with reliable PDF generator ---
+  // --- Save / Bake all stamps with reliable PDF generator ---
   async function bake() {
-    if (!file || !signatureUrl) return;
+    if (!file || !signatureUrl || stamps.length === 0) return;
     setState("processing");
     try {
       const sigPngBytes = dataUrlToBytes(signatureUrl);
 
       // 1. Vector embedding with pdf-lib
       try {
-        const { PDFDocument } = await loadPdfLib();
+        const { PDFDocument, degrees } = await loadPdfLib();
         const sourceBytes = rawPdfBytes ? rawPdfBytes.slice() : new Uint8Array(await file.arrayBuffer());
         const doc = await PDFDocument.load(sourceBytes, { ignoreEncryption: true });
 
         const pages = doc.getPages();
-        const targetIndex = Math.max(0, Math.min(placedPage - 1, pages.length - 1));
-        const targetPage = pages[targetIndex];
-        const { width, height } = targetPage.getSize();
-
         const sigImage = await doc.embedPng(sigPngBytes);
-        const sigW = width * (sigScale / 100);
-        const sigH = sigW * (sigImage.height / sigImage.width);
+        const aspect = sigImage.height / sigImage.width;
+        // CSS rotate() is clockwise-positive; pdf-lib rotates
+        // counter-clockwise, so negate to match the preview.
+        const ccw = -rotation;
+        const rad = (ccw * Math.PI) / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
 
-        const posX = placed ? placed.x : 0.5;
-        const posY = placed ? placed.y : 0.75;
+        // Geometry for one stamp (no edge clamping — overhang is clipped
+        // by the page, and the center is kept fixed under rotation).
+        const stampRect = (pageWidth: number, pageHeight: number, stamp: Stamp) => {
+          const sigW = pageWidth * (sigScale / 100);
+          const sigH = sigW * aspect;
+          const cx = stamp.x * pageWidth;
+          const cy = pageHeight - stamp.y * pageHeight;
+          const x = cx - ((sigW / 2) * cos - (sigH / 2) * sin);
+          const y = cy - ((sigW / 2) * sin + (sigH / 2) * cos);
+          return { sigW, sigH, x, y };
+        };
 
-        const x = Math.max(0, Math.min(width - sigW, posX * width - sigW / 2));
-        const y = Math.max(0, Math.min(height - sigH, height - posY * height - sigH / 2));
-
-        // 1a. Server-first: same geometry, rendered by the microservice.
-        try {
-          const fd = new FormData();
-          fd.append("file", file, file.name);
-          fd.append(
-            "signatureImage",
-            new Blob([sigPngBytes.slice().buffer as ArrayBuffer], { type: "image/png" }),
-            "signature.png",
-          );
-          fd.append("page", String(targetIndex + 1));
-          fd.append("x", String(x));
-          fd.append("y", String(y));
-          fd.append("w", String(sigW));
-          fd.append("h", String(sigH));
-          const serverBlob = await tryServerApi(PDF_ENDPOINTS.sign, fd);
-          if (serverBlob && serverBlob.size > 0) {
-            const url = URL.createObjectURL(serverBlob);
-            if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-            setDownloadUrl(url);
-            setFilename(`signed-${file.name.replace(/\.pdf$/i, "")}.pdf`);
-            setDoneLabel(`${fmt(messages.doneSigned, { page: targetIndex + 1, pages: pages.length })} ${messages.viaServer}`);
-            setState("done");
-            return;
+        // 1a. Server-first for the simple case only: exactly one stamp and
+        // no rotation (the API has no rotation parameter).
+        if (stamps.length === 1 && rotation === 0) {
+          const only = stamps[0];
+          const targetIndex = Math.max(0, Math.min(only.page - 1, pages.length - 1));
+          const { width, height } = pages[targetIndex].getSize();
+          const { sigW, sigH, x, y } = stampRect(width, height, only);
+          try {
+            const fd = new FormData();
+            fd.append("file", file, file.name);
+            fd.append(
+              "signatureImage",
+              new Blob([sigPngBytes.slice().buffer as ArrayBuffer], { type: "image/png" }),
+              "signature.png",
+            );
+            fd.append("page", String(targetIndex + 1));
+            fd.append("x", String(x));
+            fd.append("y", String(y));
+            fd.append("w", String(sigW));
+            fd.append("h", String(sigH));
+            const serverBlob = await tryServerApi(PDF_ENDPOINTS.sign, fd);
+            if (serverBlob && serverBlob.size > 0) {
+              const url = URL.createObjectURL(serverBlob);
+              if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+              setDownloadUrl(url);
+              setFilename(`signed-${file.name.replace(/\.pdf$/i, "")}.pdf`);
+              setDoneLabel(`${fmt(messages.doneSigned, { page: targetIndex + 1, pages: pages.length })} ${messages.viaServer}`);
+              setState("done");
+              return;
+            }
+          } catch (serverErr) {
+            console.warn("Server sign failed, falling back to browser processing:", serverErr);
           }
-        } catch (serverErr) {
-          console.warn("Server sign failed, falling back to browser processing:", serverErr);
         }
 
-        targetPage.drawImage(sigImage, {
-          x,
-          y,
-          width: sigW,
-          height: sigH,
-        });
+        for (const stamp of stamps) {
+          const targetIndex = Math.max(0, Math.min(stamp.page - 1, pages.length - 1));
+          const targetPage = pages[targetIndex];
+          const { width, height } = targetPage.getSize();
+          const { sigW, sigH, x, y } = stampRect(width, height, stamp);
+          targetPage.drawImage(sigImage, {
+            x,
+            y,
+            width: sigW,
+            height: sigH,
+            rotate: degrees(ccw),
+          });
+        }
 
         const savedBytes = await doc.save();
         const blob = pdfBlob(savedBytes);
         const url = URL.createObjectURL(blob);
         setDownloadUrl(url);
         setFilename(`signed-${file.name.replace(/\.pdf$/i, "")}.pdf`);
-        setDoneLabel(fmt(messages.doneSigned, { page: placedPage, pages: pages.length }));
+        setDoneLabel(
+          stamps.length === 1
+            ? fmt(messages.doneSigned, {
+                page: Math.max(1, Math.min(stamps[0].page, pages.length)),
+                pages: pages.length,
+              })
+            : fmt(messages.doneSignedMany, { n: stamps.length }),
+        );
         setState("done");
         return;
       } catch (pdfLibErr) {
@@ -603,11 +628,13 @@ export default function SignPdf({ messages }: Props) {
         if (p > 1) doc.addPage([w, h], w >= h ? "landscape" : "portrait");
         doc.addImage(off.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, w, h);
 
-        if (placed && p === placedPage) {
+        // Raster fallback draws stamps unrotated (rotation needs vectors).
+        for (const stamp of stamps) {
+          if (stamp.page !== p) continue;
           const sigW = w * (sigScale / 100);
           const sigH = sigW * 0.4;
-          const sigX = Math.max(0, Math.min(w - sigW, placed.x * w - sigW / 2));
-          const sigY = Math.max(0, Math.min(h - sigH, placed.y * h - sigH / 2));
+          const sigX = stamp.x * w - sigW / 2;
+          const sigY = stamp.y * h - sigH / 2;
           doc.addImage(signatureUrl, "PNG", sigX, sigY, sigW, sigH);
         }
       }
@@ -616,7 +643,11 @@ export default function SignPdf({ messages }: Props) {
       const url = URL.createObjectURL(blob);
       setDownloadUrl(url);
       setFilename(`signed-${file.name.replace(/\.pdf$/i, "")}.pdf`);
-      setDoneLabel(fmt(messages.doneSigned, { page: placedPage, pages: pdf.numPages }));
+      setDoneLabel(
+        stamps.length === 1
+          ? fmt(messages.doneSigned, { page: stamps[0].page, pages: pdf.numPages })
+          : fmt(messages.doneSignedMany, { n: stamps.length }),
+      );
       setState("done");
     } catch (err) {
       console.error("Sign PDF error:", err);
@@ -631,9 +662,10 @@ export default function SignPdf({ messages }: Props) {
     setTyped("");
     setSignatureUrl(null);
     setRawImageCanvas(null);
-    setPlaced(null);
-    setPageNum(1);
-    setPlacedPage(1);
+    setStamps([]);
+    nextStampId.current = 1;
+    setRotation(0);
+    setJumpText("1");
     setTotalPages(0);
     setPdfDoc(null);
     setState("idle");
@@ -931,34 +963,44 @@ export default function SignPdf({ messages }: Props) {
             </div>
           </div>
 
-          {/* ── 2. DOCUMENT PREVIEW WITH DRAGGABLE SIGNATURE ── */}
+          {/* ── 2. SCROLLABLE DOCUMENT PREVIEW WITH STAMPS ── */}
           <div className="sign-doc-area">
-            {/* Page navigation toolbar */}
+            {/* Jump-to-page toolbar */}
             <div className="sign-doc-toolbar">
               <div className="sign-doc-toolbar-left">
+                <label className="sign-jump-control">
+                  <span>{messages.jumpLabel}</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={jumpText}
+                    onChange={(e) => setJumpText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") jumpToPage();
+                    }}
+                    aria-label={messages.jumpLabel}
+                    disabled={state === "processing"}
+                  />
+                  <span className="sign-page-indicator">/ {totalPages}</span>
+                </label>
                 <button
                   type="button"
                   className="btn btn--secondary btn--sm"
-                  disabled={pageNum <= 1}
-                  onClick={() => setPageNum((p) => p - 1)}
+                  onClick={jumpToPage}
+                  disabled={state === "processing"}
                 >
-                  ‹ Prev
+                  {messages.jumpGo}
                 </button>
-                <span className="sign-page-indicator">
-                  Page {pageNum} / {totalPages}
-                </span>
-                <button
-                  type="button"
-                  className="btn btn--secondary btn--sm"
-                  disabled={pageNum >= totalPages}
-                  onClick={() => setPageNum((p) => p + 1)}
-                >
-                  Next ›
-                </button>
+                {stamps.length > 0 && (
+                  <span className="sign-page-indicator">
+                    {stamps.length} × ✒
+                  </span>
+                )}
               </div>
 
               {signatureUrl && (
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
                   <label className="sign-size-control">
                     <span>Signature Size:</span>
                     <input
@@ -969,70 +1011,92 @@ export default function SignPdf({ messages }: Props) {
                       onChange={(e) => setSigScale(Number(e.target.value))}
                     />
                   </label>
-                  {placed && (
-                    <button
-                      type="button"
-                      className="btn btn--secondary btn--sm"
-                      style={{ color: "var(--color-error)", borderColor: "var(--color-error)" }}
-                      onClick={() => setPlaced(null)}
-                      title="Remove signature from current position"
-                    >
-                      Clear Placement
-                    </button>
-                  )}
+                  <label className="sign-size-control">
+                    <span>{messages.rotationLabel} ({rotation}°):</span>
+                    <input
+                      type="range"
+                      min={-180}
+                      max={180}
+                      step={5}
+                      value={rotation}
+                      onChange={(e) => setRotation(Number(e.target.value))}
+                    />
+                  </label>
                 </div>
               )}
             </div>
 
-            {/* The PDF Document Canvas */}
-            <div className="sign-page-wrap" ref={pageWrapRef}>
-              <div className="sign-page-container">
-                <canvas
-                  ref={pageCanvasRef}
-                  className="sign-page"
-                  onClick={handleCanvasClick}
-                  style={{ cursor: signatureUrl ? "crosshair" : "default" }}
-                />
-
-                {signatureUrl && placed && placedPage === pageNum && (
+            {/* All pages, scrollable */}
+            <div className="sign-pages-scroll">
+              {Array.from({ length: totalPages }, (_, i) => {
+                const page = i + 1;
+                const pageStamps = stamps.filter((s) => s.page === page);
+                return (
                   <div
-                    className={`sign-place-marker ${isDragging ? "is-dragging" : ""}`}
-                    style={{
-                      left: `${placed.x * 100}%`,
-                      top: `${placed.y * 100}%`,
-                      width: `${sigScale}%`,
+                    key={page}
+                    className="sign-page-wrap"
+                    ref={(el) => {
+                      pageBlockRefs.current[i] = el;
                     }}
-                    onPointerDown={handleMarkerPointerDown}
                   >
-                    <span className="sign-marker-badge" style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
-                      <MoveIcon size={12} strokeWidth={2.5} />
-                      Drag to move
-                    </span>
-                    <button
-                      type="button"
-                      className="sign-delete-btn"
-                      onPointerDown={(e) => {
-                        e.stopPropagation();
-                        setPlaced(null);
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPlaced(null);
-                      }}
-                      title="Remove signature from page"
-                      aria-label="Remove signature"
-                    >
-                      ×
-                    </button>
-                    <img src={signatureUrl} alt="" />
-                    <div
-                      className="sign-resize-handle"
-                      onPointerDown={handleResizePointerDown}
-                      title="Drag corner to resize"
-                    />
+                    <div className="sign-page-label" aria-hidden="true">
+                      {messages.jumpLabel} {page} / {totalPages}
+                    </div>
+                    <div className="sign-page-container">
+                      <canvas
+                        ref={(el) => {
+                          pageCanvasRefs.current[i] = el;
+                        }}
+                        className="sign-page"
+                        onClick={(e) => handleCanvasClick(e, page)}
+                        style={{ cursor: signatureUrl ? "crosshair" : "default" }}
+                      />
+
+                      {signatureUrl &&
+                        pageStamps.map((stamp) => (
+                          <div
+                            key={stamp.id}
+                            className={`sign-place-marker ${isDragging ? "is-dragging" : ""}`}
+                            style={{
+                              left: `${stamp.x * 100}%`,
+                              top: `${stamp.y * 100}%`,
+                              width: `${sigScale}%`,
+                              transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+                            }}
+                            onPointerDown={(e) => handleMarkerPointerDown(e, stamp)}
+                          >
+                            <span className="sign-marker-badge" style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                              <MoveIcon size={12} strokeWidth={2.5} />
+                              Drag to move
+                            </span>
+                            <button
+                              type="button"
+                              className="sign-delete-btn"
+                              onPointerDown={(e) => {
+                                e.stopPropagation();
+                                removeStamp(stamp.id);
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeStamp(stamp.id);
+                              }}
+                              title="Remove signature from page"
+                              aria-label="Remove signature"
+                            >
+                              ×
+                            </button>
+                            <img src={signatureUrl} alt="" />
+                            <div
+                              className="sign-resize-handle"
+                              onPointerDown={handleResizePointerDown}
+                              title="Drag corner to resize"
+                            />
+                          </div>
+                        ))}
+                    </div>
                   </div>
-                )}
-              </div>
+                );
+              })}
             </div>
 
             {!signatureUrl && (
@@ -1040,20 +1104,20 @@ export default function SignPdf({ messages }: Props) {
                 Create or upload your signature above, then click anywhere on the document to place it.
               </p>
             )}
-            {signatureUrl && !placed && (
+            {signatureUrl && stamps.length === 0 && (
               <p className="sign-hint">
-                Click anywhere on the document above to place your signature.
+                Click any page above to stamp your signature — stamp as many times as you need.
               </p>
             )}
-            {signatureUrl && placed && (
+            {signatureUrl && stamps.length > 0 && (
               <p className="sign-hint">
-                <strong>Drag & move</strong> the signature directly on the document, or click to reposition. Use the corner handle to resize.
+                {messages.signHintMulti}
               </p>
             )}
           </div>
 
           {/* ── 3. DOWNLOAD ACTION ── */}
-          {signatureUrl && placed && state !== "done" && (
+          {signatureUrl && stamps.length > 0 && state !== "done" && (
             <button
               type="button"
               className="btn btn--primary btn--block sign-download-btn"
