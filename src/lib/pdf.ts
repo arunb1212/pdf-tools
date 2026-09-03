@@ -28,6 +28,28 @@ export interface ToolMessages {
   errorGeneric: string;
   /** Legal disclaimer shown on the Sign PDF tool. */
   legalNote: string;
+  /** OCR location note (browser vs server). */
+  ocrNote: string;
+  ocrNoteServer: string;
+  /** Per-tool primary action verbs (clearer than a generic "Download"). */
+  mergeAction: string;
+  splitAction: string;
+  lockAction: string;
+  unlockAction: string;
+  pdfToJpgAction: string;
+  jpgToPdfAction: string;
+  pdfToCsvAction: string;
+  csvToPdfAction: string;
+  /** Guidance + specific error copy. */
+  needTwoFiles: string;
+  errorPassword: string;
+  errorNoText: string;
+  passwordMismatch: string;
+  passwordLabel: string;
+  confirmPasswordLabel: string;
+  columnsLabel: string;
+  rowsLabel: string;
+  reorderHint: string;
 }
 
 // Format a byte count into a human-readable size.

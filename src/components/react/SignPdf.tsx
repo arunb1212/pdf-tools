@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
 import { loadPdfJs, loadPdfLib, loadJsPDF, pdfBlob, type ToolMessages } from "@/lib/pdf";
+import { PDF_ENDPOINTS, tryServerApi } from "@/lib/api";
 import {
   PenToolIcon,
   TextIcon,
@@ -527,6 +528,34 @@ export default function SignPdf({ messages }: Props) {
 
         const x = Math.max(0, Math.min(width - sigW, posX * width - sigW / 2));
         const y = Math.max(0, Math.min(height - sigH, height - posY * height - sigH / 2));
+
+        // 1a. Server-first: same geometry, rendered by the microservice.
+        try {
+          const fd = new FormData();
+          fd.append("file", file, file.name);
+          fd.append(
+            "signatureImage",
+            new Blob([sigPngBytes.slice().buffer as ArrayBuffer], { type: "image/png" }),
+            "signature.png",
+          );
+          fd.append("page", String(targetIndex + 1));
+          fd.append("x", String(x));
+          fd.append("y", String(y));
+          fd.append("w", String(sigW));
+          fd.append("h", String(sigH));
+          const serverBlob = await tryServerApi(PDF_ENDPOINTS.sign, fd);
+          if (serverBlob && serverBlob.size > 0) {
+            const url = URL.createObjectURL(serverBlob);
+            if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+            setDownloadUrl(url);
+            setFilename(`signed-${file.name.replace(/\.pdf$/i, "")}.pdf`);
+            setDoneLabel(`Signature successfully applied to page ${targetIndex + 1} of ${pages.length} · via secure server`);
+            setState("done");
+            return;
+          }
+        } catch (serverErr) {
+          console.warn("Server sign failed, falling back to browser processing:", serverErr);
+        }
 
         targetPage.drawImage(sigImage, {
           x,

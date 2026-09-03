@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
 import { formatBytes, loadPdfJs, loadJsPDF, loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
+import { PDF_ENDPOINTS, tryServerApi } from "@/lib/api";
 import { CompressionIcon, AlertTriangleIcon } from "./Icons";
 
 interface Props {
@@ -142,6 +143,24 @@ export default function CompressPdf({ messages }: Props) {
   async function compress() {
     if (!file) return;
     setState("processing");
+    setProgress(0);
+
+    // Server-first: Ghostscript vector-preserving compression.
+    // Only accepted when it actually shrinks the file; otherwise the
+    // browser path below runs (it has its own already-optimal guard).
+    try {
+      const fd = new FormData();
+      fd.append("file", file, file.name);
+      fd.append("quality", String(settings.quality));
+      fd.append("targetKB", String(Math.round(getTargetBytes() / 1024)));
+      const blob = await tryServerApi(PDF_ENDPOINTS.compress, fd, setProgress);
+      if (blob && blob.size > 0 && blob.size < file.size) {
+        finishCompression(blob, file.size, false, true);
+        return;
+      }
+    } catch (e) {
+      console.warn("Server compression failed, falling back to browser processing:", e);
+    }
     setProgress(0);
 
     try {
@@ -375,15 +394,16 @@ export default function CompressPdf({ messages }: Props) {
     }
   }
 
-  function finishCompression(resultBlob: Blob, originalBytes: number, _lossless: boolean) {
+  function finishCompression(resultBlob: Blob, originalBytes: number, _lossless: boolean, viaServer = false) {
     const finalSize = resultBlob.size;
     setProgress(100);
     setCompressedSize(finalSize);
 
+    const suffix = viaServer ? " · via secure server" : "";
     if (finalSize < originalBytes) {
       const compressionPercent = Math.round((1 - finalSize / originalBytes) * 100);
       setDoneLabel(
-        `Compressed from ${formatBytes(originalBytes)} to ${formatBytes(finalSize)} (${compressionPercent}% smaller)`
+        `Compressed from ${formatBytes(originalBytes)} to ${formatBytes(finalSize)} (${compressionPercent}% smaller)${suffix}`
       );
     } else {
       setDoneLabel(

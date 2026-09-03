@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
 import { formatBytes, loadJsPDF, type ToolMessages } from "@/lib/pdf";
+import { PDF_ENDPOINTS, tryServerApi } from "@/lib/api";
 import { CloseIcon } from "./Icons";
 
 interface Props {
@@ -48,6 +49,27 @@ export default function JpgToPdf({ messages }: Props) {
   async function convert() {
     if (files.length === 0) return;
     setState("processing");
+    // Server-first: embed images into a PDF page-size document.
+    // Orientation matches the browser path (from the first image).
+    try {
+      const first = await loadImage(files[0]);
+      const fd = new FormData();
+      files.forEach((f) => fd.append("files[]", f, f.name));
+      fd.append("pageSize", "A4");
+      fd.append("margin", "0");
+      fd.append("orientation", first.width > first.height ? "landscape" : "portrait");
+      const blob = await tryServerApi(PDF_ENDPOINTS.jpgToPdf, fd);
+      if (blob && blob.size > 0) {
+        if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+        setDownloadUrl(URL.createObjectURL(blob));
+        setFilename(`images-${Date.now()}.pdf`);
+        setDoneLabel(`${files.length} image${files.length > 1 ? "s" : ""} · ${formatBytes(blob.size)} · via secure server`);
+        setState("done");
+        return;
+      }
+    } catch (e) {
+      console.warn("Server conversion failed, falling back to browser processing:", e);
+    }
     try {
       const { jsPDF } = await loadJsPDF();
       // Determine orientation from the first image (A4 proportions).
@@ -145,7 +167,7 @@ export default function JpgToPdf({ messages }: Props) {
           disabled={state === "processing"}
           onClick={convert}
         >
-          {messages.download}
+          {messages.jpgToPdfAction}
         </button>
       )}
 

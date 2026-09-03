@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
 import { loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
+import { PDF_ENDPOINTS, tryServerApi } from "@/lib/api";
 import { ShieldLockIcon, DownloadIcon, TrashIcon } from "./Icons";
 
 interface Props {
@@ -342,6 +343,41 @@ export default function HideDataOnPdf({ messages }: Props) {
       const doc = await PDFDocument.load(rawPdfBytes.slice(), { ignoreEncryption: true });
       const helveticaFont = await doc.embedFont(StandardFonts.HelveticaBold);
       const pages = doc.getPages();
+
+      // Server-first when the request matches server capabilities (opaque
+      // black boxes). White/slate colors and label text are browser-only
+      // features, so those stay on the client path below.
+      const serverCapable =
+        redactions.length > 0 &&
+        redactions.every((r) => r.color === "black" && !r.customText?.trim());
+      if (serverCapable) {
+        try {
+          const serverRedactions = redactions.flatMap((red) => {
+            if (red.page < 1 || red.page > pages.length) return [];
+            const { width: pW, height: pH } = pages[red.page - 1].getSize();
+            const w = red.width * pW;
+            const h = red.height * pH;
+            return [{ page: red.page, x: red.x * pW, y: pH - red.y * pH - h, w, h }];
+          });
+          const fd = new FormData();
+          fd.append("file", file, file.name);
+          fd.append("redactions", JSON.stringify(serverRedactions));
+          const serverBlob = await tryServerApi(PDF_ENDPOINTS.hideData, fd);
+          if (serverBlob && serverBlob.size > 0) {
+            const url = URL.createObjectURL(serverBlob);
+            if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+            setDownloadUrl(url);
+            setFilename(`redacted-${file.name.replace(/\.pdf$/i, "")}.pdf`);
+            setDoneLabel(
+              `Permanently redacted ${redactions.length} area${redactions.length > 1 ? "s" : ""} across ${totalPages} page${totalPages > 1 ? "s" : ""} · via secure server.`
+            );
+            setState("done");
+            return;
+          }
+        } catch (serverErr) {
+          console.warn("Server redaction failed, falling back to browser processing:", serverErr);
+        }
+      }
 
       for (const red of redactions) {
         if (red.page < 1 || red.page > pages.length) continue;

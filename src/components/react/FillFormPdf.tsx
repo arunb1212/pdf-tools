@@ -443,6 +443,11 @@ export default function FillFormPdf({ messages, locale = "en" }: Props) {
   }
 
   // Bake & Export Filled Form PDF
+  // NOTE: intentionally browser-only. This editor bakes free-floating visual
+  // annotations (text/check/cross/date/signature overlays at normalized
+  // coordinates), which the server's /api/v1/fill-form endpoint cannot
+  // reproduce — it fills named AcroForm fields from JSON key-values.
+  // Routing these overlays server-side would silently drop them.
   async function bakeForm() {
     if (!file || !rawPdfBytes) return;
     setState("processing");

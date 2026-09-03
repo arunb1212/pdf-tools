@@ -188,6 +188,21 @@
   margin: -0.5rem 0 1rem;
 }
 
+/* Inline validation error under a form field (mirrors .dropzone__error). */
+.field-error {
+  color: var(--color-error);
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin: -0.5rem 0 1rem;
+}
+
+/* Neutral summary line under an uploaded file / file list. */
+.file-summary {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0.75rem 0 0;
+}
+
 .options-row {
   margin-top: 1.25rem;
   display: flex;

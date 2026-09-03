@@ -10,6 +10,8 @@ export interface ProcessResultProps {
   state: "idle" | "processing" | "done" | "error";
   /** UI copy shown while state === "done" (e.g. page count / byte size) */
   doneLabel?: ReactNode;
+  /** Specific error copy; falls back to messages.errorGeneric when omitted. */
+  errorMessage?: ReactNode;
   onReset: () => void;
   /** Children are used as the download control when state === "done". */
   children?: ReactNode;
@@ -23,6 +25,7 @@ export function ProcessResult({
   messages,
   state,
   doneLabel,
+  errorMessage,
   onReset,
   children,
 }: ProcessResultProps) {
@@ -38,7 +41,7 @@ export function ProcessResult({
   if (state === "error") {
     return (
       <div className="result result--error" role="alert">
-        <p>{messages.errorGeneric}</p>
+        <p>{errorMessage ?? messages.errorGeneric}</p>
         <button type="button" className="btn btn--secondary" onClick={onReset}>
           {messages.processAnother}
         </button>

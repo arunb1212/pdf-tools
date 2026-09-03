@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
 import { formatBytes, loadJsPDF, type ToolMessages } from "@/lib/pdf";
+import { PDF_ENDPOINTS, tryServerApi } from "@/lib/api";
 
 interface Props {
   messages: ToolMessages;
@@ -71,6 +72,7 @@ function breakLongWords(val: string): string {
 
 export default function CsvToPdf({ messages }: Props) {
   const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<{ cols: number; rows: number } | null>(null);
   const [state, setState] = useState<"idle" | "processing" | "done" | "error">("idle");
   const [doneLabel, setDoneLabel] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
@@ -87,11 +89,41 @@ export default function CsvToPdf({ messages }: Props) {
     }
     setFile(f);
     setState("idle");
+    // Peek at the table shape so the user sees what will be converted.
+    try {
+      const { headers, rows } = parseCsv(await f.text());
+      setPreview(headers.length > 0 ? { cols: headers.length, rows: rows.length } : null);
+    } catch {
+      setPreview(null);
+    }
   }
 
   async function convert() {
     if (!file) return;
     setState("processing");
+    // Server-first: formatted PDF table (landscape for wide tables,
+    // matching the browser path below).
+    try {
+      const text = await file.text();
+      const { headers } = parseCsv(text);
+      if (headers.length > 0) {
+        const fd = new FormData();
+        fd.append("file", file, file.name);
+        fd.append("orientation", headers.length > 4 ? "landscape" : "portrait");
+        fd.append("style", "striped");
+        const blob = await tryServerApi(PDF_ENDPOINTS.csvToPdf, fd);
+        if (blob && blob.size > 0) {
+          if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+          setDownloadUrl(URL.createObjectURL(blob));
+          setFilename(`${file.name.replace(/\.csv$/i, "")}-table.pdf`);
+          setDoneLabel(`Table PDF · ${formatBytes(blob.size)} · via secure server`);
+          setState("done");
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Server conversion failed, falling back to browser processing:", e);
+    }
     try {
       const text = await file.text();
       const { headers, rows } = parseCsv(text);
@@ -167,6 +199,7 @@ export default function CsvToPdf({ messages }: Props) {
 
   function reset() {
     setFile(null);
+    setPreview(null);
     setState("idle");
     setDoneLabel(null);
     if (downloadUrl) URL.revokeObjectURL(downloadUrl);
@@ -188,13 +221,18 @@ export default function CsvToPdf({ messages }: Props) {
           <p className="file-preview__meta">
             {file.name} · {formatBytes(file.size)}
           </p>
+          {preview && (
+            <p className="file-summary" role="status">
+              {preview.cols} {messages.columnsLabel} · {preview.rows} {messages.rowsLabel}
+            </p>
+          )}
           <button
             type="button"
             className="btn btn--primary btn--block"
             disabled={state === "processing"}
             onClick={convert}
           >
-            {messages.download}
+            {messages.csvToPdfAction}
           </button>
         </div>
       )}

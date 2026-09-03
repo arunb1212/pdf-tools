@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
 import { formatBytes, loadPdfJs, toCsv, type ToolMessages } from "@/lib/pdf";
+import { PDF_ENDPOINTS, tryServerApi } from "@/lib/api";
 
 interface Props {
   messages: ToolMessages;
@@ -65,6 +66,7 @@ export default function PdfToCsv({ messages }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [state, setState] = useState<"idle" | "processing" | "done" | "error">("idle");
   const [doneLabel, setDoneLabel] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [filename, setFilename] = useState("extracted.csv");
 
@@ -83,6 +85,32 @@ export default function PdfToCsv({ messages }: Props) {
   async function convert() {
     if (!file) return;
     setState("processing");
+    setErrorMessage(null);
+    // Server-first: layout-aware table extraction (better on complex /
+    // scanned tables than the browser text-layer path below).
+    try {
+      const fd = new FormData();
+      fd.append("file", file, file.name);
+      const blob = await tryServerApi(PDF_ENDPOINTS.pdfToCsv, fd);
+      if (blob && blob.size > 0) {
+        const text = await blob.text();
+        const rowCount = Math.max(0, text.trim().split(/\r?\n/).length - 1);
+        if (rowCount === 0) {
+          // Scanned/image-only page: extraction succeeded but found nothing.
+          setErrorMessage(messages.errorNoText);
+          setState("error");
+          return;
+        }
+        if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+        setDownloadUrl(URL.createObjectURL(blob));
+        setFilename(`${file.name.replace(/\.pdf$/i, "")}-extracted.csv`);
+        setDoneLabel(`Extracted ${rowCount} rows · ${formatBytes(blob.size)} · via secure server`);
+        setState("done");
+        return;
+      }
+    } catch (e) {
+      console.warn("Server extraction failed, falling back to browser processing:", e);
+    }
     try {
       const pdfjs = await loadPdfJs();
       const data = await file.arrayBuffer();
@@ -111,6 +139,12 @@ export default function PdfToCsv({ messages }: Props) {
       }
 
       const finalHeaders = headers.length > 0 ? headers : ["text"];
+      if (allRows.length === 0) {
+        // Image-only / scanned page: no text layer to extract.
+        setErrorMessage(messages.errorNoText);
+        setState("error");
+        return;
+      }
       const csv = toCsv(finalHeaders, allRows);
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       setDownloadUrl(URL.createObjectURL(blob));
@@ -127,6 +161,7 @@ export default function PdfToCsv({ messages }: Props) {
     setFile(null);
     setState("idle");
     setDoneLabel(null);
+    setErrorMessage(null);
     if (downloadUrl) URL.revokeObjectURL(downloadUrl);
     setDownloadUrl(null);
   }
@@ -152,7 +187,7 @@ export default function PdfToCsv({ messages }: Props) {
             disabled={state === "processing"}
             onClick={convert}
           >
-            {messages.download}
+            {messages.pdfToCsvAction}
           </button>
         </div>
       )}
@@ -161,6 +196,7 @@ export default function PdfToCsv({ messages }: Props) {
         messages={messages}
         state={state}
         doneLabel={doneLabel}
+        errorMessage={errorMessage}
         onReset={reset}
       >
         {state === "done" && downloadUrl && (

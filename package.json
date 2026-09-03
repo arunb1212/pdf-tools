@@ -18,6 +18,7 @@
     "geist": "^1.7.2",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^5.0.8",
+    "jszip": "^3.10.1",
     "pdf-lib-with-encrypt": "^1.2.1",
     "pdfjs-dist": "^4.7.76",
     "react": "^18.3.1",

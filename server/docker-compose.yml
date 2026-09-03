@@ -1,0 +1,14 @@
+services:
+  pdf-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      CORS_ORIGINS: http://localhost:4321,http://localhost:3000
+      MAX_FILE_MB: 50
+      TMPDIR: /dev/shm
+    tmpfs:
+      - /dev/shm:rw,size=512m,mode=1777

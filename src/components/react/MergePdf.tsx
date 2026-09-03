@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
 import { formatBytes, loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
+import { PDF_ENDPOINTS, tryServerApi } from "@/lib/api";
 import { ArrowUpIcon, ArrowDownIcon, CloseIcon } from "./Icons";
 
 interface Props {
@@ -37,6 +38,24 @@ export default function MergePdf({ messages }: Props) {
 
   async function merge() {
     setState("processing");
+    // Server-first: native QPDF merge (lossless, vector-preserving).
+    // Falls through to the browser path when unconfigured/offline/failing.
+    try {
+      const fd = new FormData();
+      files.forEach((f) => fd.append("files[]", f, f.name));
+      const blob = await tryServerApi(PDF_ENDPOINTS.merge, fd);
+      if (blob && blob.size > 0) {
+        const url = URL.createObjectURL(blob);
+        if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+        setDownloadUrl(url);
+        setFilename(`merged-${Date.now()}.pdf`);
+        setDoneLabel(`${files.length} files · ${formatBytes(blob.size)} · via secure server`);
+        setState("done");
+        return;
+      }
+    } catch (e) {
+      console.warn("Server merge failed, falling back to browser processing:", e);
+    }
     try {
       const { PDFDocument } = await loadPdfLib();
       const merged = await PDFDocument.create();
@@ -70,6 +89,8 @@ export default function MergePdf({ messages }: Props) {
   function remove(index: number) {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }
+
+  const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
 
   return (
     <div className="tool">
@@ -120,10 +141,21 @@ export default function MergePdf({ messages }: Props) {
         </ul>
       )}
 
+      {files.length === 1 && state !== "done" && (
+        <p className="file-summary" role="status">
+          1 × PDF · {formatBytes(totalBytes)} — {messages.needTwoFiles}
+        </p>
+      )}
+
       {files.length > 1 && state !== "done" && (
-        <button type="button" className="btn btn--primary btn--block" disabled={state === "processing"} onClick={merge}>
-          {messages.download}
-        </button>
+        <>
+          <p className="file-summary" role="status">
+            {files.length} × PDF · {formatBytes(totalBytes)} — {messages.reorderHint}
+          </p>
+          <button type="button" className="btn btn--primary btn--block" disabled={state === "processing"} onClick={merge}>
+            {messages.mergeAction}
+          </button>
+        </>
       )}
 
       <ProcessResult

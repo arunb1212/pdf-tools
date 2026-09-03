@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
 import { csvEscape, formatBytes, type ToolMessages } from "@/lib/pdf";
+import { PDF_ENDPOINTS, isServerConfigured, tryServerApi } from "@/lib/api";
 
 interface Props {
   messages: ToolMessages;
@@ -54,6 +55,25 @@ export default function JpgToCsv({ messages }: Props) {
   async function convert() {
     if (!file) return;
     setState("processing");
+    // Server-first: native Tesseract with table-structure (TSV) output.
+    // Falls back to in-browser Tesseract.js below.
+    try {
+      const fd = new FormData();
+      fd.append("file", file, file.name);
+      const blob = await tryServerApi(PDF_ENDPOINTS.jpgToCsv, fd);
+      if (blob && blob.size > 0) {
+        const text = await blob.text();
+        const rowCount = Math.max(0, text.trim().split(/\r?\n/).length - 1);
+        if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+        setDownloadUrl(URL.createObjectURL(blob));
+        setFilename(`${file.name.replace(/\.[^.]+$/, "")}-ocr.csv`);
+        setDoneLabel(`OCR complete · ${rowCount} rows · ${formatBytes(blob.size)} · via secure server`);
+        setState("done");
+        return;
+      }
+    } catch (e) {
+      console.warn("Server OCR failed, falling back to browser processing:", e);
+    }
     try {
       const Tesseract = await import("tesseract.js");
       const worker = await Tesseract.createWorker("eng");
@@ -101,14 +121,14 @@ export default function JpgToCsv({ messages }: Props) {
           <p className="file-preview__meta">
             {file.name} · {formatBytes(file.size)}
           </p>
-          <p className="ocr-note">OCR runs in your browser. Complex tables can take a moment.</p>
+          <p className="ocr-note">{isServerConfigured() ? messages.ocrNoteServer : messages.ocrNote}</p>
           <button
             type="button"
             className="btn btn--primary btn--block"
             disabled={state === "processing"}
             onClick={convert}
           >
-            {messages.download}
+            {messages.pdfToCsvAction}
           </button>
         </div>
       )}
