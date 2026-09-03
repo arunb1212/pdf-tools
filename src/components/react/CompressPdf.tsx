@@ -146,60 +146,75 @@ export default function CompressPdf({ messages }: Props) {
 
     try {
       const pdfjs = await loadPdfJs();
-      const bytes = await file.arrayBuffer();
-      const pdf = await pdfjs.getDocument({ data: new Uint8Array(bytes) }).promise;
-      const numPages = pdf.numPages;
-
-      const targetBytes = getTargetBytes();
       const originalBytes = file.size;
+      const targetBytes = getTargetBytes();
 
-      // Check if structural lossless compression via pdf-lib is possible
-      let losslessBytes: Uint8Array | null = null;
+      // Read file buffer once and make dedicated copies for pdfjs and pdf-lib
+      const fileBuffer = await file.arrayBuffer();
+
+      // Pass 1: Lossless Structural Compression (pdf-lib)
+      // Removes unused objects, flattens metadata, and compresses object streams losslessly
+      let losslessBlob: Blob | null = null;
       try {
         const { PDFDocument } = await loadPdfLib();
-        const pdfDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
-        const saved = await pdfDoc.save({ useObjectStreams: true });
-        if (saved.length < originalBytes) {
-          losslessBytes = saved;
+        const pdfDoc = await PDFDocument.load(fileBuffer.slice(0), { ignoreEncryption: true });
+        // Strip non-essential document metadata
+        pdfDoc.setTitle("");
+        pdfDoc.setAuthor("");
+        pdfDoc.setSubject("");
+        pdfDoc.setKeywords([]);
+        pdfDoc.setProducer("");
+        pdfDoc.setCreator("");
+        const savedBytes = await pdfDoc.save({ useObjectStreams: true });
+        if (savedBytes && savedBytes.length > 0 && savedBytes.length < originalBytes) {
+          losslessBlob = pdfBlob(savedBytes);
         }
       } catch (e) {
-        // Ignore fallback errors
+        // Ignore fallback errors and continue to high-DPI raster compression
       }
 
-      // If user asks for high fidelity (>= 75% quality) and lossless saves enough:
-      if (losslessBytes && losslessBytes.length <= targetBytes && settings.quality >= 75) {
-        const finalBlob = pdfBlob(losslessBytes);
-        const finalSize = finalBlob.size;
+      // If lossless compression already hits or exceeds the target, use it directly!
+      // This preserves 100% native vector text, perfect sharpness, and zero rasterization artifacts.
+      if (losslessBlob && losslessBlob.size <= targetBytes && settings.quality >= 70) {
+        const finalSize = losslessBlob.size;
         setCompressedSize(finalSize);
         setProgress(100);
         const pct = Math.round((1 - finalSize / originalBytes) * 100);
         setDoneLabel(
           `Compressed losslessly from ${formatBytes(originalBytes)} to ${formatBytes(finalSize)} (${pct}% smaller)`
         );
-        const url = URL.createObjectURL(finalBlob);
+        const url = URL.createObjectURL(losslessBlob);
         setDownloadUrl(url);
         setFilename(`compressed-${file.name.replace(/\.pdf$/i, "")}.pdf`);
         setState("done");
         return;
       }
 
-      // High-DPI Resolution to ensure text, numbers, and tables remain 100% crisp & readable
-      // 144 - 170 DPI (scale 2.0 - 2.4) preserves character glyphs with 16+ vertical pixels
-      let scale = 2.0;
-      if (settings.quality >= 75) {
-        scale = 2.3;
-      } else if (settings.quality <= 30) {
-        scale = 1.65;
-      } else {
-        scale = 1.95;
-      }
+      // Pass 2: High-DPI Resolution & Calibrated Quality Compression
+      // Load document into PDF.js
+      const pdf = await pdfjs.getDocument({ data: new Uint8Array(fileBuffer.slice(0)) }).promise;
+      const numPages = pdf.numPages;
 
       const overhead = 1500 + numPages * 400;
-      const availableImageBytes = Math.max(500 * numPages, targetBytes - overhead);
+      const availableImageBytes = Math.max(5000 * numPages, targetBytes - overhead);
       const targetPerPage = availableImageBytes / numPages;
 
-      // Fast binary search on page 1 canvas to calibrate exact JPEG quality for the target size
-      let calibratedQuality = 0.70;
+      // High-DPI Resolution Rule:
+      // Text readability strictly requires minimum 140+ DPI (scale >= 1.75 on A4)
+      // At scale 2.0-2.4, characters have 18-24 vertical pixels, ensuring text and tables remain crystal clear.
+      let scale = 2.1;
+      if (targetPerPage < 50 * 1024) {
+        scale = 1.75;
+      } else if (targetPerPage < 100 * 1024) {
+        scale = 1.95;
+      } else if (targetPerPage < 250 * 1024) {
+        scale = 2.15;
+      } else {
+        scale = 2.40;
+      }
+
+      // Binary Search Calibration on Sample Page 1 to find the optimal JPEG quality
+      let calibratedQuality = 0.75;
       try {
         const samplePage = await pdf.getPage(1);
         const viewport = samplePage.getViewport({ scale });
@@ -213,13 +228,19 @@ export default function CompressPdf({ messages }: Props) {
 
         let lowQ = 0.15;
         let highQ = 0.95;
-        let bestQ = 0.70;
+        let bestQ = 0.75;
+        let minDiff = Infinity;
 
-        for (let iter = 0; iter < 8; iter++) {
+        for (let iter = 0; iter < 10; iter++) {
           const midQ = (lowQ + highQ) / 2;
           const dataUrl = testCanvas.toDataURL("image/jpeg", midQ);
           const approxBytes = Math.round((dataUrl.length - 23) * 0.75);
-          bestQ = midQ;
+          const diff = Math.abs(approxBytes - targetPerPage);
+
+          if (diff < minDiff) {
+            minDiff = diff;
+            bestQ = midQ;
+          }
 
           if (approxBytes > targetPerPage) {
             highQ = midQ;
@@ -227,11 +248,12 @@ export default function CompressPdf({ messages }: Props) {
             lowQ = midQ;
           }
         }
-        calibratedQuality = Math.max(0.15, Math.min(0.95, bestQ));
+        calibratedQuality = Math.max(0.18, Math.min(0.95, bestQ));
       } catch (e) {
-        calibratedQuality = Math.max(0.2, settings.quality / 100);
+        calibratedQuality = Math.max(0.25, settings.quality / 100);
       }
 
+      // Helper function to build PDF from canvas pages
       async function buildRasterPdf(renderScale: number, renderQuality: number): Promise<Blob> {
         const { jsPDF } = await loadJsPDF();
         const newPdf = new jsPDF({ unit: "pt", compress: true });
@@ -266,7 +288,7 @@ export default function CompressPdf({ messages }: Props) {
             "FAST"
           );
 
-          setProgress(Math.round((i / numPages) * 90));
+          setProgress(Math.round((i / numPages) * 85));
         }
 
         return newPdf.output("blob");
@@ -274,24 +296,38 @@ export default function CompressPdf({ messages }: Props) {
 
       let resultBlob = await buildRasterPdf(scale, calibratedQuality);
 
-      // Pass 2: If the output is still significantly off-target or exceeds target budget by > 10%:
-      if (resultBlob.size > targetBytes * 1.10 || resultBlob.size >= originalBytes) {
-        const shrinkFactor = Math.min(0.90, targetBytes / resultBlob.size);
-        const retryScale = Math.max(1.5, scale * Math.sqrt(shrinkFactor));
+      // Convergence Step 1: If output exceeds target budget by > 8%, shrink adaptively
+      if (resultBlob.size > targetBytes * 1.08 || resultBlob.size >= originalBytes) {
+        const shrinkFactor = Math.min(0.92, targetBytes / resultBlob.size);
+        const retryScale = Math.max(1.50, scale * Math.sqrt(shrinkFactor));
         const retryQuality = Math.max(0.15, calibratedQuality * shrinkFactor);
 
         const retryBlob = await buildRasterPdf(retryScale, retryQuality);
-        if (retryBlob.size < resultBlob.size) {
+        if (retryBlob.size < resultBlob.size && retryBlob.size > 0) {
           resultBlob = retryBlob;
         }
       }
 
-      // Hard safety guard: Compressed output MUST NEVER be larger than original file
-      if (resultBlob.size >= originalBytes) {
-        if (losslessBytes && losslessBytes.length < originalBytes) {
-          resultBlob = pdfBlob(losslessBytes);
+      // Convergence Step 2: If output significantly undershot the target (< 80% of budget) and quality can be boosted:
+      if (resultBlob.size < targetBytes * 0.80 && calibratedQuality < 0.90) {
+        const boostRatio = targetBytes / resultBlob.size;
+        const boostedQuality = Math.min(0.94, calibratedQuality * Math.min(1.35, boostRatio));
+        const boostedScale = Math.min(2.40, scale * 1.10);
+
+        const boostedBlob = await buildRasterPdf(boostedScale, boostedQuality);
+        if (boostedBlob.size <= targetBytes * 1.05 && boostedBlob.size > resultBlob.size) {
+          resultBlob = boostedBlob;
+        }
+      }
+
+      // Hard Safety Guard:
+      // 1. Output must NEVER be 0 bytes.
+      // 2. Output must NEVER be larger than original file.
+      if (resultBlob.size === 0 || resultBlob.size >= originalBytes) {
+        if (losslessBlob && losslessBlob.size < originalBytes) {
+          resultBlob = losslessBlob;
         } else {
-          resultBlob = new Blob([bytes], { type: "application/pdf" });
+          resultBlob = file; // Return the valid original file directly
         }
       }
 
