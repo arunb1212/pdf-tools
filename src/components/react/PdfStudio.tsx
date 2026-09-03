@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
 import { loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
@@ -17,6 +17,14 @@ import {
   CursorClickIcon,
   MoveIcon,
   CloseIcon,
+  UndoIcon,
+  RedoIcon,
+  ZoomInIcon,
+  ZoomOutIcon,
+  RotateIcon,
+  DeletePageIcon,
+  HighlightIcon,
+  ShapeIcon,
 } from "./Icons";
 
 interface Props {
@@ -24,8 +32,7 @@ interface Props {
   locale?: string;
 }
 
-// Unified annotation model
-export type AnnotationType = "redaction" | "text" | "signature" | "image";
+export type AnnotationType = "redaction" | "text" | "signature" | "image" | "highlight" | "shape";
 
 export interface BaseAnnotation {
   id: number;
@@ -64,15 +71,33 @@ export interface ImageAnnotation extends BaseAnnotation {
   mimeType: string;
 }
 
+export interface HighlightAnnotation extends BaseAnnotation {
+  type: "highlight";
+  color: string;
+}
+
+export interface ShapeAnnotation extends BaseAnnotation {
+  type: "shape";
+  shapeType: "rectangle" | "circle" | "arrow" | "line";
+  color: string;
+  strokeWidth: number;
+  fillColor?: string;
+}
+
 export type Annotation =
   | RedactionAnnotation
   | TextAnnotation
   | SignatureAnnotation
-  | ImageAnnotation;
+  | ImageAnnotation
+  | HighlightAnnotation
+  | ShapeAnnotation;
 
-export type ActiveTool = "select" | "redact" | "text" | "sign" | "image";
+export type ActiveTool = "select" | "redact" | "text" | "sign" | "image" | "highlight" | "shape";
 
 const DISPLAY_SCALE = 1.35;
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 3;
+const ZOOM_STEP = 0.25;
 
 export default function PdfStudio({ messages, locale = "en" }: Props) {
   // Document state
@@ -81,6 +106,17 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [pageNum, setPageNum] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
+  const [pageThumbnails, setPageThumbnails] = useState<string[]>([]);
+
+  // Zoom state
+  const [zoom, setZoom] = useState(1);
+  const [showThumbnails, setShowThumbnails] = useState(true);
+
+  // Undo/Redo state
+  const historyRef = useRef<Annotation[][]>([[]]);
+  const historyIndexRef = useRef(0);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
   // Active Tool Mode
   const [activeTool, setActiveTool] = useState<ActiveTool>("select");
@@ -113,6 +149,37 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
   const [uploadedImageBytes, setUploadedImageBytes] = useState<Uint8Array | null>(null);
   const [uploadedImageMime, setUploadedImageMime] = useState<string>("image/png");
 
+  // Highlight Tool state
+  const [highlightColor, setHighlightColor] = useState<string>("#fef08a");
+
+  // Shape Tool state
+  const [shapeType, setShapeType] = useState<"rectangle" | "circle" | "arrow" | "line">("rectangle");
+  const [shapeColor, setShapeColor] = useState<string>("#3b82f6");
+  const [shapeStrokeWidth, setShapeStrokeWidth] = useState<number>(2);
+
+  // Form Field Tool state
+  const [formFieldType, setFormFieldType] = useState<"checkbox" | "text" | "radio" | "date">("checkbox");
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    annotationId: number;
+  } | null>(null);
+
+  // Watermark state
+  const [watermarkText, setWatermarkText] = useState<string>("CONFIDENTIAL");
+  const [watermarkColor, setWatermarkColor] = useState<string>("#ef4444");
+  const [watermarkOpacity, setWatermarkOpacity] = useState<number>(0.3);
+  const [watermarkFontSize, setWatermarkFontSize] = useState<number>(48);
+  const [showWatermarkPanel, setShowWatermarkPanel] = useState(false);
+
+  // Page numbering state
+  const [pageNumberPosition, setPageNumberPosition] = useState<"bottom-center" | "bottom-left" | "bottom-right" | "top-center">("bottom-center");
+  const [pageNumberFontSize, setPageNumberFontSize] = useState<number>(12);
+  const [pageNumberColor, setPageNumberColor] = useState<string>("#666666");
+  const [showPageNumberPanel, setShowPageNumberPanel] = useState(false);
+
   // Canvas drawing state (for dragging new redaction / text box on PDF)
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
@@ -139,6 +206,119 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
 
   const accept = "application/pdf,.pdf";
 
+  // Undo/Redo functions
+  const pushHistory = useCallback((newAnnotations: Annotation[]) => {
+    const newHistory = historyRef.current.slice(0, historyIndexRef.current + 1);
+    newHistory.push(newAnnotations);
+    historyRef.current = newHistory;
+    historyIndexRef.current = newHistory.length - 1;
+    setCanUndo(historyIndexRef.current > 0);
+    setCanRedo(false);
+  }, []);
+
+  const undo = useCallback(() => {
+    if (historyIndexRef.current > 0) {
+      historyIndexRef.current--;
+      const prevState = historyRef.current[historyIndexRef.current];
+      setAnnotations(prevState);
+      setCanUndo(historyIndexRef.current > 0);
+      setCanRedo(true);
+      setSelectedId(null);
+    }
+  }, []);
+
+  const redo = useCallback(() => {
+    if (historyIndexRef.current < historyRef.current.length - 1) {
+      historyIndexRef.current++;
+      const nextState = historyRef.current[historyIndexRef.current];
+      setAnnotations(nextState);
+      setCanUndo(true);
+      setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+      setSelectedId(null);
+    }
+  }, []);
+
+  // Zoom functions
+  const zoomIn = useCallback(() => {
+    setZoom(prev => Math.min(MAX_ZOOM, prev + ZOOM_STEP));
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setZoom(prev => Math.max(MIN_ZOOM, prev - ZOOM_STEP));
+  }, []);
+
+  const resetZoom = useCallback(() => {
+    setZoom(1);
+  }, []);
+
+  // Page thumbnail generation
+  const generateThumbnails = useCallback(async (pdf: any) => {
+    const thumbs: string[] = [];
+    const pdfjs = await import("pdfjs-dist/build/pdf.mjs");
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 0.2 });
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d")!;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      thumbs.push(canvas.toDataURL("image/jpeg", 0.7));
+    }
+    setPageThumbnails(thumbs);
+  }, []);
+
+  // Page operations
+  const rotatePage = useCallback(async (degrees: 90 | 180 | 270) => {
+    if (!rawPdfBytes) return;
+    setState("processing");
+    try {
+      const { PDFDocument } = await loadPdfLib();
+      const doc = await PDFDocument.load(rawPdfBytes.slice(), { ignoreEncryption: true });
+      const page = doc.getPage(pageNum - 1);
+      page.setRotation((page.getRotation().angle + degrees) % 360);
+      const newBytes = await doc.save();
+      setRawPdfBytes(newBytes);
+      const pdfjs = await import("pdfjs-dist/build/pdf.mjs");
+      const updatedPdf = await pdfjs.getDocument({ data: newBytes.buffer.slice(0) }).promise;
+      setPdfDoc(updatedPdf);
+      generateThumbnails(updatedPdf);
+      setState("idle");
+    } catch (err) {
+      console.error("Rotate error:", err);
+      setState("error");
+    }
+  }, [rawPdfBytes, pageNum, generateThumbnails]);
+
+  const deletePage = useCallback(async () => {
+    if (!rawPdfBytes || totalPages <= 1) return;
+    setState("processing");
+    try {
+      const { PDFDocument } = await loadPdfLib();
+      const doc = await PDFDocument.load(rawPdfBytes.slice(), { ignoreEncryption: true });
+      doc.removePage(pageNum - 1);
+      const newBytes = await doc.save();
+      setRawPdfBytes(newBytes);
+      const newTotal = totalPages - 1;
+      setTotalPages(newTotal);
+      setPageNum(prev => Math.min(prev, newTotal));
+      // Remove annotations for deleted page and shift page numbers
+      const newAnnotations = annotations
+        .filter(a => a.page !== pageNum)
+        .map(a => a.page > pageNum ? { ...a, page: a.page - 1 } : a);
+      setAnnotations(newAnnotations);
+      pushHistory(newAnnotations);
+      const pdfjs = await import("pdfjs-dist/build/pdf.mjs");
+      const updatedPdf = await pdfjs.getDocument({ data: newBytes.buffer.slice(0) }).promise;
+      setPdfDoc(updatedPdf);
+      generateThumbnails(updatedPdf);
+      setState("idle");
+    } catch (err) {
+      console.error("Delete page error:", err);
+      setState("error");
+    }
+  }, [rawPdfBytes, totalPages, pageNum, annotations, pushHistory, generateThumbnails]);
+
   // Handle Initial PDF Load
   async function handleFiles(incoming: File[]) {
     const f = incoming[0];
@@ -154,6 +334,12 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
     setDoneLabel(null);
     if (downloadUrl) URL.revokeObjectURL(downloadUrl);
     setDownloadUrl(null);
+    setZoom(1);
+    // Reset undo/redo history
+    historyRef.current = [[]];
+    historyIndexRef.current = 0;
+    setCanUndo(false);
+    setCanRedo(false);
 
     try {
       const pdfjs = await import("pdfjs-dist/build/pdf.mjs");
@@ -167,6 +353,7 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
       setPdfDoc(pdf);
       setTotalPages(pdf.numPages);
       setActiveTool("select");
+      generateThumbnails(pdf);
     } catch (err) {
       console.error("Studio PDF load error:", err);
       setState("error");
@@ -180,7 +367,7 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
       if (!pdfDoc || !pageCanvasRef.current) return;
       try {
         const page = await pdfDoc.getPage(pageNum);
-        const viewport = page.getViewport({ scale: DISPLAY_SCALE });
+        const viewport = page.getViewport({ scale: DISPLAY_SCALE * zoom });
         const canvas = pageCanvasRef.current;
         if (!canvas || !active) return;
         canvas.width = viewport.width;
@@ -195,7 +382,7 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
     return () => {
       active = false;
     };
-  }, [pdfDoc, pageNum]);
+  }, [pdfDoc, pageNum, zoom]);
 
   // --------------------------------------------------------------------------
   // In-Session Document Merging (Insert Pages from Another PDF)
@@ -303,7 +490,54 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
         bytes: uploadedImageBytes || undefined,
         mimeType: uploadedImageMime,
       };
-      setAnnotations((prev) => [...prev, newAnnotation]);
+      setAnnotations((prev) => {
+        const next = [...prev, newAnnotation];
+        pushHistory(next);
+        return next;
+      });
+      setSelectedId(newId);
+    } else if (activeTool === "highlight") {
+      // Start drawing highlight
+      canvas.setPointerCapture(e.pointerId);
+      setIsDrawing(true);
+      setDrawStart({ x, y });
+      setDrawCurrent({ x, y });
+      setSelectedId(null);
+    } else if (activeTool === "shape") {
+      // Start drawing shape
+      canvas.setPointerCapture(e.pointerId);
+      setIsDrawing(true);
+      setDrawStart({ x, y });
+      setDrawCurrent({ x, y });
+      setSelectedId(null);
+    } else if (activeTool === "form") {
+      // Place form field at clicked point
+      const newId = nextId.current++;
+      const fieldSizes = {
+        checkbox: { width: 0.03, height: 0.03 },
+        text: { width: 0.25, height: 0.04 },
+        radio: { width: 0.03, height: 0.03 },
+        date: { width: 0.2, height: 0.04 },
+      };
+      const size = fieldSizes[formFieldType];
+      const newAnnotation: ShapeAnnotation = {
+        id: newId,
+        type: "shape",
+        page: pageNum,
+        x: Math.max(0, x - size.width / 2),
+        y: Math.max(0, y - size.height / 2),
+        width: size.width,
+        height: size.height,
+        shapeType: formFieldType === "checkbox" ? "rectangle" : formFieldType === "radio" ? "circle" : "rectangle",
+        color: "#121111",
+        strokeWidth: 2,
+        fillColor: "transparent",
+      };
+      setAnnotations((prev) => {
+        const next = [...prev, newAnnotation];
+        pushHistory(next);
+        return next;
+      });
       setSelectedId(newId);
     }
   }
@@ -336,27 +570,69 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
     let height = Math.abs(endY - drawStart.y);
 
     if (width < 0.012 && height < 0.012) {
-      width = 0.28;
-      height = 0.04;
+      width = activeTool === "highlight" ? 0.3 : 0.2;
+      height = activeTool === "highlight" ? 0.04 : 0.15;
     }
 
     const boxX = Math.max(0, Math.min(1 - width, left));
     const boxY = Math.max(0, Math.min(1 - height, top));
 
     const newId = nextId.current++;
-    const newRedaction: RedactionAnnotation = {
-      id: newId,
-      type: "redaction",
-      page: pageNum,
-      x: boxX,
-      y: boxY,
-      width,
-      height,
-      color: redactColor,
-      label: redactLabel.trim() || undefined,
-    };
 
-    setAnnotations((prev) => [...prev, newRedaction]);
+    if (activeTool === "redact") {
+      const newRedaction: RedactionAnnotation = {
+        id: newId,
+        type: "redaction",
+        page: pageNum,
+        x: boxX,
+        y: boxY,
+        width,
+        height,
+        color: redactColor,
+        label: redactLabel.trim() || undefined,
+      };
+      setAnnotations((prev) => {
+        const next = [...prev, newRedaction];
+        pushHistory(next);
+        return next;
+      });
+    } else if (activeTool === "highlight") {
+      const newHighlight: HighlightAnnotation = {
+        id: newId,
+        type: "highlight",
+        page: pageNum,
+        x: boxX,
+        y: boxY,
+        width,
+        height,
+        color: highlightColor,
+      };
+      setAnnotations((prev) => {
+        const next = [...prev, newHighlight];
+        pushHistory(next);
+        return next;
+      });
+    } else if (activeTool === "shape") {
+      const newShape: ShapeAnnotation = {
+        id: newId,
+        type: "shape",
+        page: pageNum,
+        x: boxX,
+        y: boxY,
+        width,
+        height,
+        shapeType,
+        color: shapeColor,
+        strokeWidth: shapeStrokeWidth,
+        fillColor: "transparent",
+      };
+      setAnnotations((prev) => {
+        const next = [...prev, newShape];
+        pushHistory(next);
+        return next;
+      });
+    }
+
     setSelectedId(newId);
     setIsDrawing(false);
     setDrawStart(null);
@@ -458,9 +734,43 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
   }
 
   function deleteAnnotation(id: number) {
-    setAnnotations((prev) => prev.filter((a) => a.id !== id));
+    setAnnotations((prev) => {
+      const next = prev.filter((a) => a.id !== id);
+      pushHistory(next);
+      return next;
+    });
     if (selectedId === id) setSelectedId(null);
+    setContextMenu(null);
   }
+
+  // Duplicate annotation
+  const duplicateAnnotation = useCallback((ann: Annotation) => {
+    const newId = nextId.current++;
+    const newAnnotation = {
+      ...ann,
+      id: newId,
+      x: ann.x + 0.02,
+      y: ann.y + 0.02,
+    };
+    setAnnotations((prev) => {
+      const next = [...prev, newAnnotation];
+      pushHistory(next);
+      return next;
+    });
+    setSelectedId(newId);
+  }, [pushHistory]);
+
+  // Context menu handlers
+  const handleContextMenu = useCallback((e: React.MouseEvent, ann: Annotation) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedId(ann.id);
+    setContextMenu({ x: e.clientX, y: e.clientY, annotationId: ann.id });
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
 
   // --------------------------------------------------------------------------
   // Signature Creation Logic (Draw / Type / Upload / Camera)
@@ -623,7 +933,7 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
     setState("processing");
 
     try {
-      const { PDFDocument, rgb, StandardFonts } = await loadPdfLib();
+      const { PDFDocument, rgb, StandardFonts, degrees } = await loadPdfLib();
       const doc = await PDFDocument.load(rawPdfBytes.slice(), { ignoreEncryption: true });
       const helveticaBold = await doc.embedFont(StandardFonts.HelveticaBold);
       const helvetica = await doc.embedFont(StandardFonts.Helvetica);
@@ -730,7 +1040,120 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
           } catch (err) {
             console.warn("Image embedding error:", err);
           }
+        } else if (ann.type === "highlight") {
+          // Parse highlight color
+          let hr = 1, hg = 0.94, hb = 0.54;
+          if (ann.color && ann.color.startsWith("#") && ann.color.length === 7) {
+            hr = parseInt(ann.color.slice(1, 3), 16) / 255;
+            hg = parseInt(ann.color.slice(3, 5), 16) / 255;
+            hb = parseInt(ann.color.slice(5, 7), 16) / 255;
+          }
+          page.drawRectangle({
+            x: Math.max(0, rectX),
+            y: Math.max(0, rectY),
+            width: Math.min(pWidth, rectW),
+            height: Math.min(pHeight, rectH),
+            color: rgb(hr, hg, hb),
+            opacity: 0.4,
+          });
+        } else if (ann.type === "shape") {
+          // Parse shape color
+          let sr = 0.23, sg = 0.51, sb = 0.96;
+          if (ann.color && ann.color.startsWith("#") && ann.color.length === 7) {
+            sr = parseInt(ann.color.slice(1, 3), 16) / 255;
+            sg = parseInt(ann.color.slice(3, 5), 16) / 255;
+            sb = parseInt(ann.color.slice(5, 7), 16) / 255;
+          }
+          const strokeWidth = ann.strokeWidth || 2;
+          if (ann.shapeType === "rectangle") {
+            page.drawRectangle({
+              x: Math.max(0, rectX),
+              y: Math.max(0, rectY),
+              width: Math.min(pWidth, rectW),
+              height: Math.min(pHeight, rectH),
+              borderColor: rgb(sr, sg, sb),
+              borderWidth: strokeWidth,
+            });
+          } else if (ann.shapeType === "circle") {
+            page.drawCircle({
+              x: rectX + rectW / 2,
+              y: rectY + rectH / 2,
+              size: Math.min(rectW, rectH) / 2,
+              borderColor: rgb(sr, sg, sb),
+              borderWidth: strokeWidth,
+            });
+          } else if (ann.shapeType === "line" || ann.shapeType === "arrow") {
+            page.drawLine({
+              start: { x: rectX, y: rectY + rectH / 2 },
+              end: { x: rectX + rectW, y: rectY + rectH / 2 },
+              thickness: strokeWidth,
+              color: rgb(sr, sg, sb),
+            });
+          }
         }
+      }
+
+      // Apply watermark to all pages
+      if (showWatermarkPanel && watermarkText.trim()) {
+        const { StandardFonts } = await loadPdfLib();
+        const watermarkFont = await doc.embedFont(StandardFonts.HelveticaBold);
+        const wr = parseInt(watermarkColor.slice(1, 3), 16) / 255;
+        const wg = parseInt(watermarkColor.slice(3, 5), 16) / 255;
+        const wb = parseInt(watermarkColor.slice(5, 7), 16) / 255;
+
+        for (const page of pages) {
+          const { width: pw, height: ph } = page.getSize();
+          const textWidth = watermarkFont.widthOfTextAtSize(watermarkText, watermarkFontSize);
+          // Center watermark diagonally
+          const x = pw / 2 - textWidth / 2;
+          const y = ph / 2;
+          page.drawText(watermarkText, {
+            x,
+            y,
+            size: watermarkFontSize,
+            font: watermarkFont,
+            color: rgb(wr, wg, wb),
+            opacity: watermarkOpacity,
+            rotate: degrees(45),
+          });
+        }
+      }
+
+      // Apply page numbers to all pages
+      if (showPageNumberPanel) {
+        const { StandardFonts } = await loadPdfLib();
+        const pageNumFont = await doc.embedFont(StandardFonts.Helvetica);
+        const pr = parseInt(pageNumberColor.slice(1, 3), 16) / 255;
+        const pg = parseInt(pageNumberColor.slice(3, 5), 16) / 255;
+        const pb = parseInt(pageNumberColor.slice(5, 7), 16) / 255;
+
+        pages.forEach((page, index) => {
+          const { width: pw, height: ph } = page.getSize();
+          const pageNumStr = `${index + 1}`;
+          const textWidth = pageNumFont.widthOfTextAtSize(pageNumStr, pageNumberFontSize);
+
+          let x = pw / 2 - textWidth / 2;
+          let y = 30;
+
+          if (pageNumberPosition === "bottom-left") {
+            x = 30;
+            y = 30;
+          } else if (pageNumberPosition === "bottom-right") {
+            x = pw - textWidth - 30;
+            y = 30;
+          } else if (pageNumberPosition === "top-center") {
+            x = pw / 2 - textWidth / 2;
+            y = ph - 30;
+          }
+
+          page.drawText(pageNumStr, {
+            x,
+            y,
+            size: pageNumberFontSize,
+            font: pageNumFont,
+            color: rgb(pr, pg, pb),
+          });
+        });
       }
 
       const savedBytes = await doc.save();
@@ -775,6 +1198,57 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
     drawingBox = { left, top, width, height };
   }
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Ignore if typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      // Undo/Redo
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) {
+        e.preventDefault();
+        redo();
+        return;
+      }
+
+      // Tool shortcuts
+      switch (e.key.toLowerCase()) {
+        case "v": setActiveTool("select"); break;
+        case "r": setActiveTool("redact"); break;
+        case "t": setActiveTool("text"); break;
+        case "s": setActiveTool("sign"); break;
+        case "i": setActiveTool("image"); break;
+        case "h": setActiveTool("highlight"); break;
+        case "d": setActiveTool("shape"); break;
+        case "delete":
+        case "backspace":
+          if (selectedId) {
+            e.preventDefault();
+            deleteAnnotation(selectedId);
+          }
+          break;
+        case "+":
+        case "=":
+          zoomIn();
+          break;
+        case "-":
+          zoomOut();
+          break;
+        case "0":
+          resetZoom();
+          break;
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo, selectedId, zoomIn, zoomOut, resetZoom]);
+
   return (
     <div className="tool studio-wrapper">
       <FileDropzone
@@ -800,6 +1274,7 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
             </div>
 
             <div className="studio-header-center">
+              {/* Page Navigation */}
               <button
                 type="button"
                 className="btn btn--secondary btn--sm"
@@ -822,9 +1297,127 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
               >
                 Next ›
               </button>
+
+              {/* Divider */}
+              <span className="studio-divider" />
+
+              {/* Undo/Redo */}
+              <button
+                type="button"
+                className="btn btn--secondary btn--sm"
+                onClick={undo}
+                disabled={!canUndo}
+                title="Undo (Ctrl+Z)"
+                style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+              >
+                <UndoIcon size={14} />
+              </button>
+              <button
+                type="button"
+                className="btn btn--secondary btn--sm"
+                onClick={redo}
+                disabled={!canRedo}
+                title="Redo (Ctrl+Y)"
+                style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+              >
+                <RedoIcon size={14} />
+              </button>
+
+              {/* Divider */}
+              <span className="studio-divider" />
+
+              {/* Zoom Controls */}
+              <button
+                type="button"
+                className="btn btn--secondary btn--sm"
+                onClick={zoomOut}
+                disabled={zoom <= MIN_ZOOM}
+                title="Zoom Out (-)"
+              >
+                <ZoomOutIcon size={14} />
+              </button>
+              <span className="studio-zoom-badge" onClick={resetZoom} title="Reset Zoom">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                type="button"
+                className="btn btn--secondary btn--sm"
+                onClick={zoomIn}
+                disabled={zoom >= MAX_ZOOM}
+                title="Zoom In (+)"
+              >
+                <ZoomInIcon size={14} />
+              </button>
+
+              {/* Divider */}
+              <span className="studio-divider" />
+
+              {/* Page Operations */}
+              <button
+                type="button"
+                className="btn btn--secondary btn--sm"
+                onClick={() => rotatePage(90)}
+                title="Rotate Page 90°"
+                style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+              >
+                <RotateIcon size={14} />
+              </button>
+              <button
+                type="button"
+                className="btn btn--secondary btn--sm"
+                onClick={deletePage}
+                disabled={totalPages <= 1}
+                title="Delete Current Page"
+                style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+              >
+                <DeletePageIcon size={14} />
+              </button>
             </div>
 
             <div className="studio-header-right">
+              {/* Toggle Thumbnails */}
+              <button
+                type="button"
+                className={`btn btn--secondary btn--sm${showThumbnails ? " is-active" : ""}`}
+                onClick={() => setShowThumbnails(!showThumbnails)}
+                title="Toggle Page Thumbnails"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7" />
+                  <rect x="14" y="3" width="7" height="7" />
+                  <rect x="3" y="14" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" />
+                </svg>
+              </button>
+
+              {/* Watermark Button */}
+              <button
+                type="button"
+                className={`btn btn--secondary btn--sm${showWatermarkPanel ? " is-active" : ""}`}
+                onClick={() => setShowWatermarkPanel(!showWatermarkPanel)}
+                title="Add Watermark"
+                style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </button>
+
+              {/* Page Numbering Button */}
+              <button
+                type="button"
+                className={`btn btn--secondary btn--sm${showPageNumberPanel ? " is-active" : ""}`}
+                onClick={() => setShowPageNumberPanel(!showPageNumberPanel)}
+                title="Add Page Numbers"
+                style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 19l3-3h13" />
+                  <path d="M4 5l3 3h13" />
+                  <path d="M14 12h3" />
+                </svg>
+              </button>
+
               {/* Insert / Merge PDF Button */}
               <input
                 ref={mergeFileInputRef}
@@ -858,53 +1451,213 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
             </div>
           </div>
 
-          {/* ── WORKSPACE TOOL RIBBON ── */}
-          <div className="studio-toolbar-ribbon">
+          {/* Watermark Panel */}
+          {showWatermarkPanel && (
+            <div className="studio-document-panel">
+              <div className="studio-document-panel__header">
+                <span className="studio-document-panel__title">Watermark Settings</span>
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  onClick={() => setShowWatermarkPanel(false)}
+                >
+                  <CloseIcon size={14} />
+                </button>
+              </div>
+              <div className="studio-options-row">
+                <div className="studio-input-group">
+                  <span className="studio-prop-label">Text:</span>
+                  <input
+                    type="text"
+                    className="input studio-text-mini"
+                    value={watermarkText}
+                    onChange={(e) => setWatermarkText(e.target.value)}
+                    placeholder="CONFIDENTIAL"
+                  />
+                </div>
+                <div className="studio-input-group">
+                  <span className="studio-prop-label">Color:</span>
+                  <input
+                    type="color"
+                    className="studio-color-picker"
+                    value={watermarkColor}
+                    onChange={(e) => setWatermarkColor(e.target.value)}
+                  />
+                </div>
+                <div className="studio-input-group">
+                  <span className="studio-prop-label">Opacity:</span>
+                  <input
+                    type="range"
+                    min={0.1}
+                    max={0.8}
+                    step={0.1}
+                    value={watermarkOpacity}
+                    onChange={(e) => setWatermarkOpacity(Number(e.target.value))}
+                    style={{ width: "80px" }}
+                  />
+                  <span className="studio-range-value">{Math.round(watermarkOpacity * 100)}%</span>
+                </div>
+                <div className="studio-input-group">
+                  <span className="studio-prop-label">Size:</span>
+                  <input
+                    type="number"
+                    min={24}
+                    max={120}
+                    className="input studio-num-mini"
+                    value={watermarkFontSize}
+                    onChange={(e) => setWatermarkFontSize(Number(e.target.value))}
+                  />
+                </div>
+              </div>
+              <p className="studio-hint">Watermark will be applied diagonally across all pages on export.</p>
+            </div>
+          )}
+
+          {/* Page Numbering Panel */}
+          {showPageNumberPanel && (
+            <div className="studio-document-panel">
+              <div className="studio-document-panel__header">
+                <span className="studio-document-panel__title">Page Numbering</span>
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  onClick={() => setShowPageNumberPanel(false)}
+                >
+                  <CloseIcon size={14} />
+                </button>
+              </div>
+              <div className="studio-options-row">
+                <div className="studio-input-group">
+                  <span className="studio-prop-label">Position:</span>
+                  <select
+                    className="input studio-text-mini"
+                    value={pageNumberPosition}
+                    onChange={(e) => setPageNumberPosition(e.target.value as any)}
+                  >
+                    <option value="bottom-center">Bottom Center</option>
+                    <option value="bottom-left">Bottom Left</option>
+                    <option value="bottom-right">Bottom Right</option>
+                    <option value="top-center">Top Center</option>
+                  </select>
+                </div>
+                <div className="studio-input-group">
+                  <span className="studio-prop-label">Color:</span>
+                  <input
+                    type="color"
+                    className="studio-color-picker"
+                    value={pageNumberColor}
+                    onChange={(e) => setPageNumberColor(e.target.value)}
+                  />
+                </div>
+                <div className="studio-input-group">
+                  <span className="studio-prop-label">Font Size:</span>
+                  <input
+                    type="number"
+                    min={8}
+                    max={36}
+                    className="input studio-num-mini"
+                    value={pageNumberFontSize}
+                    onChange={(e) => setPageNumberFontSize(Number(e.target.value))}
+                  />
+                </div>
+              </div>
+              <p className="studio-hint">Page numbers will be added to all pages on export.</p>
+            </div>
+          )}
+
+          {/* ── MAIN WORKSPACE: Thumbnails + Canvas ── */}
+          <div className="studio-workspace">
+            {/* Page Thumbnail Sidebar */}
+            {showThumbnails && pageThumbnails.length > 0 && (
+              <div className="studio-thumbnails">
+                {pageThumbnails.map((thumb, i) => (
+                  <div
+                    key={i}
+                    className={`studio-thumbnail${pageNum === i + 1 ? " is-active" : ""}`}
+                    onClick={() => {
+                      setPageNum(i + 1);
+                      setSelectedId(null);
+                    }}
+                  >
+                    <img src={thumb} alt={`Page ${i + 1}`} />
+                    <span className="studio-thumbnail__num">{i + 1}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ── WORKSPACE TOOL RIBBON ── */}
+            <div className="studio-main-content">
             <div className="studio-tools-nav" role="tablist">
               <button
                 type="button"
                 className={`studio-tool-tab ${activeTool === "select" ? "is-active" : ""}`}
                 onClick={() => setActiveTool("select")}
+                title="Select (V)"
                 style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
               >
                 <CursorClickIcon size={16} />
-                Select / Move
+                Select
               </button>
               <button
                 type="button"
                 className={`studio-tool-tab ${activeTool === "redact" ? "is-active" : ""}`}
                 onClick={() => setActiveTool("redact")}
+                title="Redact (R)"
                 style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
               >
                 <EyeOffIcon size={16} />
-                Hide / Redact
+                Redact
               </button>
               <button
                 type="button"
-                className={`studio-tool-tab ${activeTool === "sign" ? "is-active" : ""}`}
-                onClick={() => setActiveTool("sign")}
+                className={`studio-tool-tab ${activeTool === "highlight" ? "is-active" : ""}`}
+                onClick={() => setActiveTool("highlight")}
+                title="Highlight (H)"
                 style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
               >
-                <PenToolIcon size={16} />
-                Sign PDF
+                <HighlightIcon size={16} />
+                Highlight
               </button>
               <button
                 type="button"
                 className={`studio-tool-tab ${activeTool === "text" ? "is-active" : ""}`}
                 onClick={() => setActiveTool("text")}
+                title="Text (T)"
                 style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
               >
                 <TextIcon size={16} />
-                Add Text
+                Text
+              </button>
+              <button
+                type="button"
+                className={`studio-tool-tab ${activeTool === "shape" ? "is-active" : ""}`}
+                onClick={() => setActiveTool("shape")}
+                title="Shapes (D)"
+                style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+              >
+                <ShapeIcon size={16} />
+                Shapes
+              </button>
+              <button
+                type="button"
+                className={`studio-tool-tab ${activeTool === "sign" ? "is-active" : ""}`}
+                onClick={() => setActiveTool("sign")}
+                title="Sign (S)"
+                style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+              >
+                <PenToolIcon size={16} />
+                Sign
               </button>
               <button
                 type="button"
                 className={`studio-tool-tab ${activeTool === "image" ? "is-active" : ""}`}
                 onClick={() => setActiveTool("image")}
+                title="Image (I)"
                 style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
               >
                 <ImageIcon size={16} />
-                Insert Image
+                Image
               </button>
             </div>
 
@@ -1237,6 +1990,100 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
                   )}
                 </div>
               )}
+
+              {activeTool === "highlight" && (
+                <div className="studio-options-row">
+                  <div className="studio-color-group">
+                    <span className="studio-prop-label">Color:</span>
+                    <button
+                      type="button"
+                      className={`studio-color-swatch${highlightColor === "#fef08a" ? " is-active" : ""}`}
+                      style={{ background: "#fef08a" }}
+                      onClick={() => setHighlightColor("#fef08a")}
+                      title="Yellow"
+                    />
+                    <button
+                      type="button"
+                      className={`studio-color-swatch${highlightColor === "#bbf7d0" ? " is-active" : ""}`}
+                      style={{ background: "#bbf7d0" }}
+                      onClick={() => setHighlightColor("#bbf7d0")}
+                      title="Green"
+                    />
+                    <button
+                      type="button"
+                      className={`studio-color-swatch${highlightColor === "#bfdbfe" ? " is-active" : ""}`}
+                      style={{ background: "#bfdbfe" }}
+                      onClick={() => setHighlightColor("#bfdbfe")}
+                      title="Blue"
+                    />
+                    <button
+                      type="button"
+                      className={`studio-color-swatch${highlightColor === "#fecaca" ? " is-active" : ""}`}
+                      style={{ background: "#fecaca" }}
+                      onClick={() => setHighlightColor("#fecaca")}
+                      title="Pink"
+                    />
+                  </div>
+                  <span className="studio-hint">Drag on document to highlight text.</span>
+                </div>
+              )}
+
+              {activeTool === "shape" && (
+                <div className="studio-options-row">
+                  <div className="studio-color-group">
+                    <span className="studio-prop-label">Shape:</span>
+                    <button
+                      type="button"
+                      className={`studio-chip${shapeType === "rectangle" ? " is-active" : ""}`}
+                      onClick={() => setShapeType("rectangle")}
+                    >
+                      Rectangle
+                    </button>
+                    <button
+                      type="button"
+                      className={`studio-chip${shapeType === "circle" ? " is-active" : ""}`}
+                      onClick={() => setShapeType("circle")}
+                    >
+                      Circle
+                    </button>
+                    <button
+                      type="button"
+                      className={`studio-chip${shapeType === "line" ? " is-active" : ""}`}
+                      onClick={() => setShapeType("line")}
+                    >
+                      Line
+                    </button>
+                    <button
+                      type="button"
+                      className={`studio-chip${shapeType === "arrow" ? " is-active" : ""}`}
+                      onClick={() => setShapeType("arrow")}
+                    >
+                      Arrow
+                    </button>
+                  </div>
+                  <div className="studio-input-group">
+                    <span className="studio-prop-label">Color:</span>
+                    <input
+                      type="color"
+                      className="studio-color-picker"
+                      value={shapeColor}
+                      onChange={(e) => setShapeColor(e.target.value)}
+                    />
+                  </div>
+                  <div className="studio-input-group">
+                    <span className="studio-prop-label">Width:</span>
+                    <input
+                      type="range"
+                      min={1}
+                      max={8}
+                      value={shapeStrokeWidth}
+                      onChange={(e) => setShapeStrokeWidth(Number(e.target.value))}
+                      style={{ width: "60px" }}
+                    />
+                  </div>
+                  <span className="studio-hint">Drag on document to draw shape.</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1285,16 +2132,22 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
                 const isSelected = selectedId === ann.id;
                 const isDragging = draggingId === ann.id;
 
+                // Determine annotation class
+                let annClass = "studio-image-item";
+                if (ann.type === "redaction") {
+                  annClass = `studio-box--${ann.color}`;
+                } else if (ann.type === "text") {
+                  annClass = "studio-text-item";
+                } else if (ann.type === "highlight") {
+                  annClass = "studio-highlight-item";
+                } else if (ann.type === "shape") {
+                  annClass = "studio-shape-item";
+                }
+
                 return (
                   <div
                     key={ann.id}
-                    className={`studio-annotation-item ${
-                      ann.type === "redaction"
-                        ? `studio-box--${ann.color}`
-                        : ann.type === "text"
-                        ? "studio-text-item"
-                        : "studio-image-item"
-                    } ${isSelected ? "is-selected" : ""} ${isDragging ? "is-dragging" : ""}`}
+                    className={`studio-annotation-item ${annClass} ${isSelected ? "is-selected" : ""} ${isDragging ? "is-dragging" : ""}`}
                     style={{
                       left: `${ann.x * 100}%`,
                       top: `${ann.y * 100}%`,
@@ -1302,6 +2155,7 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
                       height: `${ann.height * 100}%`,
                     }}
                     onPointerDown={(e) => handleAnnotationPointerDown(e, ann)}
+                    onContextMenu={(e) => handleContextMenu(e, ann)}
                   >
                     {/* Render content based on annotation type */}
                     {ann.type === "redaction" && (
@@ -1327,6 +2181,54 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
 
                     {ann.type === "image" && (
                       <img src={ann.imageUrl} alt="Stamp" className="studio-overlay-img" />
+                    )}
+
+                    {ann.type === "highlight" && (
+                      <div
+                        className="studio-highlight-overlay"
+                        style={{ background: ann.color, opacity: 0.4 }}
+                      />
+                    )}
+
+                    {ann.type === "shape" && (
+                      <svg
+                        className="studio-shape-svg"
+                        viewBox="0 0 100 100"
+                        preserveAspectRatio="none"
+                        style={{ width: "100%", height: "100%" }}
+                      >
+                        {ann.shapeType === "rectangle" && (
+                          <rect
+                            x={ann.strokeWidth}
+                            y={ann.strokeWidth}
+                            width={100 - ann.strokeWidth * 2}
+                            height={100 - ann.strokeWidth * 2}
+                            fill="none"
+                            stroke={ann.color}
+                            strokeWidth={ann.strokeWidth}
+                          />
+                        )}
+                        {ann.shapeType === "circle" && (
+                          <circle
+                            cx="50"
+                            cy="50"
+                            r={50 - ann.strokeWidth}
+                            fill="none"
+                            stroke={ann.color}
+                            strokeWidth={ann.strokeWidth}
+                          />
+                        )}
+                        {(ann.shapeType === "line" || ann.shapeType === "arrow") && (
+                          <line
+                            x1="5"
+                            y1="50"
+                            x2="95"
+                            y2="50"
+                            stroke={ann.color}
+                            strokeWidth={ann.strokeWidth}
+                          />
+                        )}
+                      </svg>
                     )}
 
                     {/* Delete cross button */}
@@ -1357,6 +2259,58 @@ export default function PdfStudio({ messages, locale = "en" }: Props) {
               })}
             </div>
           </div>
+          </div>
+
+          {/* Context Menu */}
+          {contextMenu && (
+            <div
+              className="studio-context-menu"
+              style={{
+                position: "fixed",
+                left: contextMenu.x,
+                top: contextMenu.y,
+                zIndex: 1000,
+              }}
+              onClick={closeContextMenu}
+            >
+              <button
+                type="button"
+                className="studio-context-menu__item"
+                onClick={() => {
+                  const ann = annotations.find(a => a.id === contextMenu.annotationId);
+                  if (ann) duplicateAnnotation(ann);
+                  closeContextMenu();
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+                Duplicate
+              </button>
+              <button
+                type="button"
+                className="studio-context-menu__item studio-context-menu__item--danger"
+                onClick={() => deleteAnnotation(contextMenu.annotationId)}
+              >
+                <TrashIcon size={14} />
+                Delete
+              </button>
+            </div>
+          )}
+
+          {/* Click outside to close context menu */}
+          {contextMenu && (
+            <div
+              className="studio-context-menu__overlay"
+              onClick={closeContextMenu}
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 999,
+              }}
+            />
+          )}
 
           <p className="legal-note" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <ShieldLockIcon size={16} />

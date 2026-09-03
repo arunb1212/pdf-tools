@@ -66,8 +66,42 @@ const switcherPaths = languagePaths
     </nav>
 
     <LanguageSwitcher client:load current={locale} paths={switcherPaths} options={langOptions} />
+
+    <button class="mobile-nav__toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav-drawer">
+      <span class="mobile-nav__hamburger"></span>
+    </button>
   </div>
 </header>
+
+<!-- Mobile Navigation Drawer -->
+<div class="mobile-nav__overlay" id="mobile-nav-overlay" aria-hidden="true"></div>
+<nav class="mobile-nav__drawer" id="mobile-nav-drawer" aria-label="Mobile navigation" aria-hidden="true">
+  <div class="mobile-nav__header">
+    <span class="mobile-nav__title">{t.siteName}</span>
+    <button class="mobile-nav__close" aria-label="Close navigation menu">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </svg>
+    </button>
+  </div>
+  <ul class="mobile-nav__links">
+    <li><a href={locale === "en" ? "/" : "/de/"}>{t.navHome}</a></li>
+    <li><a href={locale === "en" ? "/editor/" : "/de/editor/"}>PDF Studio</a></li>
+    <li><a href={locale === "en" ? "/features/" : "/de/features/"}>{t.navFeatures}</a></li>
+    <li><a href={locale === "en" ? "/#tools" : "/de/#tools"}>{t.navTools}</a></li>
+    <li><a href={locale === "en" ? "/about/" : "/de/about/"}>{t.navAbout}</a></li>
+    <li><a href={locale === "en" ? "/privacy/" : "/de/privacy/"}>{t.navPrivacy}</a></li>
+  </ul>
+  <div class="mobile-nav__studio-cta">
+    <a class="btn btn--primary btn--block" href={locale === "en" ? "/editor/" : "/de/editor/"}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+      </svg>
+      {locale === "en" ? "Open All-in-One Studio" : "All-in-One Studio öffnen"}
+    </a>
+  </div>
+</nav>
 
 <style>
   .site-header {
@@ -124,7 +158,196 @@ const switcherPaths = languagePaths
       display: none;
     }
   }
+
+  /* Mobile Navigation Drawer */
+  .mobile-nav__toggle {
+    display: none;
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s ease;
+  }
+  .mobile-nav__toggle:hover {
+    background: var(--color-surface);
+  }
+  .mobile-nav__hamburger {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: var(--color-text);
+    position: relative;
+    transition: background 0.2s ease;
+  }
+  .mobile-nav__hamburger::before,
+  .mobile-nav__hamburger::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--color-text);
+    transition: transform 0.25s var(--ease-out-expo);
+  }
+  .mobile-nav__hamburger::before { top: -7px; }
+  .mobile-nav__hamburger::after { top: 7px; }
+
+  .mobile-nav__overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 199;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+  }
+  .mobile-nav__overlay.is-open {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .mobile-nav__drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 300px;
+    max-width: 85vw;
+    background: var(--color-bg);
+    z-index: 200;
+    transform: translateX(100%);
+    transition: transform 0.35s var(--ease-out-expo);
+    display: flex;
+    flex-direction: column;
+    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.15);
+  }
+  .mobile-nav__drawer.is-open {
+    transform: translateX(0);
+  }
+  .mobile-nav__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--color-border);
+    min-height: 62px;
+  }
+  .mobile-nav__title {
+    font-weight: 700;
+    font-size: 1.05rem;
+  }
+  .mobile-nav__close {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
+    transition: background 0.15s ease;
+  }
+  .mobile-nav__close:hover {
+    background: var(--color-surface);
+  }
+  .mobile-nav__links {
+    list-style: none;
+    margin: 0;
+    padding: 0.75rem 0;
+    flex: 1;
+    overflow-y: auto;
+  }
+  .mobile-nav__links li {
+    margin: 0;
+  }
+  .mobile-nav__links a {
+    display: flex;
+    align-items: center;
+    padding: 0.875rem 1.25rem;
+    color: var(--color-text);
+    font-weight: 500;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+    min-height: 48px;
+  }
+  .mobile-nav__links a:hover,
+  .mobile-nav__links a:active {
+    background: var(--color-surface);
+    color: var(--color-accent);
+  }
+  .mobile-nav__studio-cta {
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  @media (max-width: 768px) {
+    .mobile-nav__toggle {
+      display: inline-flex;
+    }
+    .site-header__nav {
+      display: none;
+    }
+  }
 </style>
+
+<script>
+  // Mobile navigation drawer toggle
+  (function() {
+    const toggle = document.querySelector(".mobile-nav__toggle");
+    const drawer = document.getElementById("mobile-nav-drawer");
+    const overlay = document.getElementById("mobile-nav-overlay");
+    const closeBtn = document.querySelector(".mobile-nav__close");
+    const drawerLinks = document.querySelectorAll(".mobile-nav__links a");
+
+    if (!toggle || !drawer || !overlay) return;
+
+    function openDrawer() {
+      drawer.classList.add("is-open");
+      overlay.classList.add("is-open");
+      toggle.setAttribute("aria-expanded", "true");
+      drawer.setAttribute("aria-hidden", "false");
+      overlay.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+      // Focus first link for accessibility
+      const firstLink = drawer.querySelector("a");
+      if (firstLink) setTimeout(() => firstLink.focus(), 100);
+    }
+
+    function closeDrawer() {
+      drawer.classList.remove("is-open");
+      overlay.classList.remove("is-open");
+      toggle.setAttribute("aria-expanded", "false");
+      drawer.setAttribute("aria-hidden", "true");
+      overlay.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      toggle.focus();
+    }
+
+    toggle.addEventListener("click", openDrawer);
+    overlay.addEventListener("click", closeDrawer);
+    if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
+
+    // Close on link click
+    drawerLinks.forEach((link) => {
+      link.addEventListener("click", closeDrawer);
+    });
+
+    // Close on Escape key
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && drawer.classList.contains("is-open")) {
+        closeDrawer();
+      }
+    });
+  })();
+</script>
 
 <style is:global>
   /* Language drop-down (React island) */

@@ -1,4 +1,28 @@
+# Robots.txt for PDF Tools (https://pdf-tools-lemon-nine.vercel.app/)
+
 User-agent: *
 Allow: /
 Disallow: /api/
+
+# Explicitly allow AI Search Engines & Indexers
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+# Sitemaps & LLMs documentation
 Sitemap: https://pdf-tools-lemon-nine.vercel.app/sitemap-index.xml
+Host: https://pdf-tools-lemon-nine.vercel.app

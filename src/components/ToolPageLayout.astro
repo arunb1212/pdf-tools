@@ -18,6 +18,7 @@ import JpgToCsv from "./react/JpgToCsv.tsx";
 import HideDataOnPdf from "./react/HideDataOnPdf.tsx";
 import SignPdf from "./react/SignPdf.tsx";
 import FillFormPdf from "./react/FillFormPdf.tsx";
+import CompressPdf from "./react/CompressPdf.tsx";
 
 interface Props {
   entry: CollectionEntry<"tools">;
@@ -107,6 +108,7 @@ const isBuilt = [
   "HideDataOnPdf",
   "SignPdf",
   "FillFormPdf",
+  "CompressPdf",
 ].includes(data.component);
 
 const isWideTool = ["FillFormPdf", "SignPdf", "HideDataOnPdf"].includes(data.component);
@@ -124,6 +126,14 @@ const isWideTool = ["FillFormPdf", "SignPdf", "HideDataOnPdf"].includes(data.com
 
   <main id="main-content">
     <article class:list={["container", "tool-page", { "tool-page--wide": isWideTool }]}>
+      <!-- Visible Breadcrumb Navigation -->
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <ol class="breadcrumbs__list">
+          <li><a href={locale === "en" ? "/" : "/de/"}>{t.navHome}</a></li>
+          <li><span aria-hidden="true">›</span><a href={locale === "en" ? "/#tools" : "/de/#tools"}>{t.toolsSectionTitle}</a></li>
+          <li><span aria-hidden="true">›</span><span aria-current="page">{data.shortTitle}</span></li>
+        </ol>
+      </nav>
       <header class="tool-page__header">
         <span class="tool-badge" data-processing={data.processing}>
           {data.processing === "client" ? t.fullyClientSide : t.serverFallback}
@@ -148,6 +158,7 @@ const isWideTool = ["FillFormPdf", "SignPdf", "HideDataOnPdf"].includes(data.com
               {data.component === "HideDataOnPdf" && <HideDataOnPdf client:visible messages={messages} />}
               {data.component === "SignPdf" && <SignPdf client:visible messages={messages} />}
               {data.component === "FillFormPdf" && <FillFormPdf client:visible messages={messages} locale={locale} />}
+              {data.component === "CompressPdf" && <CompressPdf client:visible messages={messages} />}
             </>
           ) : (
             <p class="coming-soon">{t.unsupportedFile}</p>

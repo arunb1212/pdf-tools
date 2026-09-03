@@ -10,6 +10,7 @@ PDF Tools is an open-access suite of client-side document processing tools built
 ### Document Manipulation
 - **Merge PDF (`/merge-pdf/`, `/de/pdf-zusammenfuegen/`)**: Combine multiple PDF files into a single document with drag-and-drop page reordering.
 - **Split PDF (`/split-pdf/`, `/de/pdf-teilen/`)**: Extract custom page ranges or split a multi-page PDF into separate single-page documents.
+- **Compress PDF (`/compress-pdf/`, `/de/pdf-komprimieren/`)**: Reduce PDF file sizes directly in the browser with adjustable quality presets and target file size constraints.
 - **Hide Data on PDF (`/hide-data-on-pdf/`, `/de/daten-in-pdf-ausblenden/`)**: Black out and redact sensitive text, personally identifiable information (PII), and numbers directly in the browser canvas before sharing.
 - **All-in-One PDF Studio (`/editor/`, `/de/editor/`)**: Browser-based interactive editor to view, annotate, reorganize, and modify PDFs in a unified workspace.
 

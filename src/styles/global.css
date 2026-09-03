@@ -137,14 +137,18 @@ select {
   border: 1px solid transparent;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease,
-    transform 0.05s ease;
+  transition: background 0.2s var(--ease-out-expo),
+    border-color 0.2s var(--ease-out-expo),
+    transform 0.15s var(--ease-out-expo),
+    box-shadow 0.2s var(--ease-out-expo);
   -webkit-user-select: none;
   user-select: none;
+  position: relative;
+  overflow: hidden;
 }
 
 .btn:active {
-  transform: translateY(1px);
+  transform: translateY(1px) scale(0.98);
 }
 
 .btn--primary {
@@ -155,6 +159,8 @@ select {
 .btn--primary:hover {
   background: var(--color-accent-hover);
   text-decoration: none;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-accent);
 }
 
 .btn--secondary {
@@ -166,6 +172,8 @@ select {
 .btn--secondary:hover {
   border-color: var(--color-accent);
   text-decoration: none;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn--ghost {
@@ -185,6 +193,20 @@ select {
 .btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+  transform: none;
+}
+
+/* Ripple effect on button click */
+.btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), rgba(255,255,255,0.3) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.btn:active::after {
+  opacity: 1;
 }
 
 /* Accordion / FAQ */
@@ -271,4 +293,75 @@ select {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Scroll reveal animations - elements visible by default, enhanced when JS loads */
+.reveal {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.7s var(--ease-out-expo),
+    transform 0.7s var(--ease-out-expo);
+}
+
+/* Only hide if JS is enabled and element hasn't been revealed yet */
+.js .reveal:not(.reveal--visible) {
+  opacity: 0;
+  transform: translateY(28px);
+}
+
+.reveal--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Staggered delays for grid items */
+.reveal--delay-1 { transition-delay: 0.05s; }
+.reveal--delay-2 { transition-delay: 0.1s; }
+.reveal--delay-3 { transition-delay: 0.15s; }
+.reveal--delay-4 { transition-delay: 0.2s; }
+.reveal--delay-5 { transition-delay: 0.25s; }
+.reveal--delay-6 { transition-delay: 0.3s; }
+.reveal--delay-7 { transition-delay: 0.35s; }
+.reveal--delay-8 { transition-delay: 0.4s; }
+.reveal--delay-9 { transition-delay: 0.45s; }
+.reveal--delay-10 { transition-delay: 0.5s; }
+.reveal--delay-11 { transition-delay: 0.55s; }
+.reveal--delay-12 { transition-delay: 0.6s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Enhanced focus styles for keyboard navigation */
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Remove outline for mouse clicks */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Skip link enhancement */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--color-accent);
+  color: #fff;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0 0 var(--radius-md) 0;
+  z-index: 200;
+  font-weight: 600;
+  transition: left 0.2s ease;
+}
+
+.skip-link:focus {
+  left: 0;
 }

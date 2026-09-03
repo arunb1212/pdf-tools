@@ -7,6 +7,7 @@ import { getTool, getToolUrl } from "../data/tools";
 import { homeFaq, features } from "../data/content";
 import FaqAccordion from "./react/FaqAccordion.tsx";
 import TiltCard from "./react/TiltCard.tsx";
+import ScrollReveal from "./react/ScrollReveal.tsx";
 
 interface Props {
   locale: Locale;
@@ -18,6 +19,7 @@ const t = ui[locale];
 const homeTools = [
   "merge-pdf",
   "split-pdf",
+  "compress-pdf",
   "lock-pdf",
   "unlock-pdf",
   "pdf-to-jpg",
@@ -27,7 +29,6 @@ const homeTools = [
   "jpg-to-csv",
   "hide-data-on-pdf",
   "sign-pdf",
-  "fill-pdf-form",
 ].map((id) => getTool(id)!).filter(Boolean);
 
 const path = locale === "en" ? "/" : "/de/";
@@ -60,6 +61,14 @@ const jsonLd = [
     description: t.tagline,
     publisher: { "@id": `${Astro.site!.origin}/#organization` },
     inLanguage: locale === "de" ? "de-DE" : "en-US",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${Astro.site!.origin}/${locale === "de" ? "de/" : ""}#tools?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
   },
   {
     "@type": "WebApplication",
@@ -85,6 +94,18 @@ const jsonLd = [
       acceptedAnswer: { "@type": "Answer", text: f.a },
     })),
   },
+  {
+    "@type": "ItemList",
+    name: t.toolsSectionTitle,
+    numberOfItems: homeTools.length,
+    itemListElement: homeTools.map((tool, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: tool.label[locale],
+      description: tool.summary[locale],
+      url: new URL(getToolUrl(tool, locale), Astro.site!).href,
+    })),
+  },
 ];
 ---
 
@@ -97,15 +118,32 @@ const jsonLd = [
   jsonLd={jsonLd}
 >
   <Header locale={locale} languagePaths={languagePaths} />
+  <ScrollReveal client:visible />
 
   <main id="main-content">
     <section class="hero">
       <div class="container hero__inner">
-        <h1>{t.heroTitle}</h1>
-        <p class="hero__subtitle">{t.heroSubtitle}</p>
-        <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
-          <a class="btn btn--primary hero__cta" href="#tools">{t.heroCta}</a>
-          <a class="btn btn--secondary hero__cta" href={locale === "en" ? "/editor/" : "/de/editor/"} style="border-color: var(--color-accent); color: var(--color-accent); display: inline-flex; align-items: center; gap: 0.4rem;">
+        <div class="hero-3d-canvas" aria-hidden="true">
+          <div class="hero-3d-pdf">
+            <svg class="hero-3d-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ff2e2e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+          </div>
+          <div class="hero-3d-particles">
+            <span class="particle particle--1"></span>
+            <span class="particle particle--2"></span>
+            <span class="particle particle--3"></span>
+          </div>
+        </div>
+        <h1 class="reveal">{t.heroTitle}</h1>
+        <p class="hero__subtitle reveal reveal--delay-1">{t.heroSubtitle}</p>
+        <div class="hero__ctas" style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+          <a class="btn btn--primary hero__cta reveal reveal--delay-2" href="#tools">{t.heroCta}</a>
+          <a class="btn btn--secondary hero__cta reveal reveal--delay-3" href={locale === "en" ? "/editor/" : "/de/editor/"} style="border-color: var(--color-accent); color: var(--color-accent); display: inline-flex; align-items: center; gap: 0.4rem;">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
               <path d="M5 3v4" />
@@ -114,7 +152,7 @@ const jsonLd = [
             {locale === "en" ? "Open All-in-One Studio" : "All-in-One Studio öffnen"}
           </a>
         </div>
-        <p class="hero__trust">
+        <p class="hero__trust reveal reveal--delay-4">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align: -2px; margin-right: 4px;">
             <rect x="3" y="11" width="18" height="11" rx="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
@@ -126,10 +164,10 @@ const jsonLd = [
 
     <section id="tools" class="tools">
       <div class="container">
-        <h2>{t.toolsSectionTitle}</h2>
+        <h2 class="reveal">{t.toolsSectionTitle}</h2>
         <ul class="tools__grid">
-          {homeTools.map((tool) => (
-            <li>
+          {homeTools.map((tool, i) => (
+            <li class={`reveal reveal--delay-${Math.min(i + 1, 12)}`}>
               <a class="tool-card" href={getToolUrl(tool, locale)} aria-label={`${tool.label[locale]}: ${tool.summary[locale]}`}>
                 <span class="tool-card__badge" data-processing={tool.processing} aria-hidden="true">
                   {tool.processing === "client"
@@ -151,10 +189,10 @@ const jsonLd = [
 
     <section class="home-features">
       <div class="container">
-        <h2>{t.featuresSectionTitle}</h2>
+        <h2 class="reveal">{t.featuresSectionTitle}</h2>
         <ul class="home-features__grid">
-          {featureCards.map((card) => (
-            <li>
+          {featureCards.map((card, i) => (
+            <li class={`reveal reveal--delay-${Math.min(i + 1, 12)}`}>
               <TiltCard client:visible {...card} />
             </li>
           ))}
@@ -165,7 +203,7 @@ const jsonLd = [
       </div>
     </section>
 
-    <section class="home-cta">
+    <section class="home-cta reveal">
       <div class="container home-cta__inner">
         <h2>{t.featuresSubsectionTitle}</h2>
         <p>{t.featuresSubtitle}</p>
@@ -175,7 +213,7 @@ const jsonLd = [
       </div>
     </section>
 
-    <div class="container home-faq">
+    <div class="container home-faq reveal">
       <FaqAccordion client:visible title={t.homeFaqHeading} items={homeFaq[locale]} />
     </div>
   </main>
@@ -187,14 +225,33 @@ const jsonLd = [
   .hero {
     padding: 5rem 0 3.5rem;
     text-align: center;
-    background: linear-gradient(
-      180deg,
-      var(--color-surface-warm) 0%,
-      var(--color-bg) 100%
-    );
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(255, 46, 46, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(255, 46, 46, 0.05) 0%, transparent 50%),
+      linear-gradient(180deg, var(--color-surface-warm) 0%, var(--color-bg) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 30% 20%, rgba(255, 46, 46, 0.03) 0%, transparent 40%),
+                radial-gradient(circle at 70% 80%, rgba(255, 46, 46, 0.02) 0%, transparent 40%);
+    animation: hero-bg-drift 20s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes hero-bg-drift {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-2%, 2%); }
   }
   .hero__inner {
     max-width: 720px;
+    position: relative;
+    z-index: 1;
   }
   .hero__subtitle {
     color: var(--color-text-muted);
@@ -210,6 +267,104 @@ const jsonLd = [
     margin-top: 1.5rem;
     color: var(--color-text-muted);
     font-size: 0.95rem;
+  }
+
+  /* 3D Floating PDF Canvas */
+  .hero-3d-canvas {
+    position: relative;
+    width: 140px;
+    height: 170px;
+    margin: 0 auto 2rem;
+    transform-style: preserve-3d;
+    animation: float 6s ease-in-out infinite;
+  }
+  .hero-3d-pdf {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(145deg, #ffffff 0%, #f8f6f4 50%, #f0ece8 100%);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow:
+      0 25px 50px rgba(255, 46, 46, 0.15),
+      0 10px 25px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    transform: perspective(800px) rotateY(-18deg) rotateX(8deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .hero-3d-pdf::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 35%;
+    height: 35%;
+    background: linear-gradient(135deg, transparent 50%, rgba(255, 46, 46, 0.06) 50%);
+    border-radius: 0 12px 0 0;
+  }
+  .hero-3d-icon {
+    opacity: 0.9;
+    filter: drop-shadow(0 2px 4px rgba(255, 46, 46, 0.2));
+  }
+  .hero-3d-particles {
+    position: absolute;
+    inset: -20px;
+    pointer-events: none;
+  }
+  .particle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    opacity: 0.4;
+  }
+  .particle--1 {
+    top: 10%;
+    left: -10%;
+    animation: particle-float-1 4s ease-in-out infinite;
+  }
+  .particle--2 {
+    top: 60%;
+    right: -15%;
+    width: 4px;
+    height: 4px;
+    animation: particle-float-2 5s ease-in-out infinite 0.5s;
+  }
+  .particle--3 {
+    bottom: 5%;
+    left: 5%;
+    width: 5px;
+    height: 5px;
+    animation: particle-float-3 3.5s ease-in-out infinite 1s;
+  }
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0) perspective(800px) rotateY(-18deg) rotateX(8deg);
+    }
+    50% {
+      transform: translateY(-12px) perspective(800px) rotateY(-15deg) rotateX(5deg);
+    }
+  }
+  @keyframes particle-float-1 {
+    0%, 100% { transform: translate(0, 0); opacity: 0.4; }
+    50% { transform: translate(10px, -15px); opacity: 0.7; }
+  }
+  @keyframes particle-float-2 {
+    0%, 100% { transform: translate(0, 0); opacity: 0.3; }
+    50% { transform: translate(-8px, 12px); opacity: 0.6; }
+  }
+  @keyframes particle-float-3 {
+    0%, 100% { transform: translate(0, 0); opacity: 0.35; }
+    50% { transform: translate(15px, 8px); opacity: 0.55; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-3d-canvas { animation: none; }
+    .hero::before { animation: none; }
+    .particle { animation: none; }
   }
 
   .tools {
@@ -238,14 +393,31 @@ const jsonLd = [
     color: var(--color-text);
     text-decoration: none;
     box-shadow: var(--shadow-sm);
-    transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    transition: border-color 0.25s var(--ease-out-expo),
+      transform 0.3s var(--ease-out-expo),
+      box-shadow 0.3s var(--ease-out-expo);
     height: 100%;
+    transform-style: preserve-3d;
+    position: relative;
+  }
+  .tool-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-lg);
+    background: radial-gradient(250px circle at var(--mouse-x, 50%) var(--mouse-y, 0%), rgba(255, 46, 46, 0.06), transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
   }
   .tool-card:hover {
     border-color: var(--color-accent);
     text-decoration: none;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    transform: perspective(800px) rotateX(-2deg) rotateY(2deg) translateY(-4px);
+    box-shadow: var(--shadow-card-hover);
+  }
+  .tool-card:hover::before {
+    opacity: 1;
   }
   .tool-card__badge {
     align-self: flex-start;

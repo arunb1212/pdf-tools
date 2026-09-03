@@ -71,6 +71,14 @@ const schemaEntry = jsonLdArray.length
           description: t.tagline,
           publisher: { "@id": `${origin}/#organization` },
           inLanguage: locale === "de" ? "de-DE" : "en-US",
+          potentialAction: {
+            "@type": "SearchAction",
+            target: {
+              "@type": "EntryPoint",
+              urlTemplate: `${origin}/${locale === "de" ? "de/" : ""}#tools?q={search_term_string}`,
+            },
+            "query-input": "required name=search_term_string",
+          },
         },
       ],
     };

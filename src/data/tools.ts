@@ -167,6 +167,18 @@ export const tools: ToolDef[] = [
     },
     related: ["sign-pdf", "hide-data-on-pdf", "merge-pdf"],
   },
+  {
+    id: "compress-pdf",
+    component: "CompressPdf",
+    processing: "client",
+    slug: { [en]: "compress-pdf", [de]: "pdf-komprimieren" },
+    label: { [en]: "Compress PDF", [de]: "PDF komprimieren" },
+    summary: {
+      [en]: "Reduce PDF file size with adjustable compression quality.",
+      [de]: "PDF-Dateigröße mit einstellbarer Komprimierungsqualität reduzieren.",
+    },
+    related: ["merge-pdf", "split-pdf", "pdf-to-jpg"],
+  },
 ];
 
 const byId = new Map(tools.map((t) => [t.id, t]));

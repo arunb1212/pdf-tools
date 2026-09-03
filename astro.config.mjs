@@ -31,7 +31,7 @@ export default defineConfig({
   ],
   vite: {
     optimizeDeps: {
-      include: ["react", "react-dom"],
+      include: ["react", "react-dom", "pdf-lib-with-encrypt"],
       exclude: ["pdf-lib", "pdfjs-dist", "jspdf", "jspdf-autotable"],
     },
     resolve: {
