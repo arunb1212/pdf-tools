@@ -138,6 +138,7 @@ export const ui = {
     jumpGo: "Go",
     rotationLabel: "Rotation",
     signHintMulti: "Click any page to stamp another signature — drag to move, × to remove.",
+    stampsPlaced: "{n} placed",
   }),
   de: make("de", {
     siteName: "PDF Tools",
@@ -262,6 +263,7 @@ export const ui = {
     jumpGo: "Los",
     rotationLabel: "Drehung",
     signHintMulti: "Klicke auf eine Seite für eine weitere Signatur — ziehen zum Verschieben, × zum Entfernen.",
+    stampsPlaced: "{n} platziert",
   }),
 } as const;
 

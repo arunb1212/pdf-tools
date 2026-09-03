@@ -163,8 +163,12 @@ export default function SignPdf({ messages }: Props) {
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [totalPages, setTotalPages] = useState(0);
   const [jumpText, setJumpText] = useState("1");
+  // Fast-measured page dimensions (no raster) so placeholders reserve
+  // correct space before lazy rendering paints each canvas.
+  const [pageSizes, setPageSizes] = useState<Array<{ w: number; h: number }>>([]);
   const pageCanvasRefs = useRef<Array<HTMLCanvasElement | null>>([]);
   const pageBlockRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const renderedRef = useRef<Set<number>>(new Set());
 
   // Tool state
   const [state, setState] = useState<"idle" | "processing" | "done" | "error">("idle");
@@ -226,31 +230,89 @@ export default function SignPdf({ messages }: Props) {
     }
   }
 
-  // Render every page into the scrollable preview (one canvas per page).
+  // Rasterize one page into its canvas. Idempotent and lazy: pages
+  // only rasterize when scrolled near (or jumped to), so 60+ page
+  // documents don't block the UI or exhaust mobile memory up front.
+  async function renderPageInto(p: number): Promise<void> {
+    if (!pdfDoc || renderedRef.current.has(p)) return;
+    renderedRef.current.add(p);
+    try {
+      const pg = await pdfDoc.getPage(p);
+      const viewport = pg.getViewport({ scale: DISPLAY_SCALE });
+      const canvas = pageCanvasRefs.current[p - 1];
+      if (canvas) {
+        canvas.width = Math.max(1, Math.round(viewport.width));
+        canvas.height = Math.max(1, Math.round(viewport.height));
+        const ctx = canvas.getContext("2d")!;
+        await pg.render({ canvasContext: ctx, viewport }).promise;
+        canvas.dataset.rendered = "1";
+      }
+      if (typeof pg.cleanup === "function") pg.cleanup();
+    } catch (err) {
+      console.error("Failed to render PDF page:", err);
+    }
+  }
+
+  // Measure every page's dimensions up-front (cheap, no raster) so
+  // placeholders hold their space, then rasterize lazily on scroll.
   useEffect(() => {
+    if (!pdfDoc) return;
     let active = true;
-    async function renderAll() {
-      if (!pdfDoc) return;
+    renderedRef.current = new Set();
+    setPageSizes([]);
+
+    async function measure() {
+      const sizes: Array<{ w: number; h: number }> = [];
       for (let p = 1; p <= pdfDoc.numPages; p++) {
         if (!active) return;
         try {
-          const page = await pdfDoc.getPage(p);
-          const viewport = page.getViewport({ scale: DISPLAY_SCALE });
-          const canvas = pageCanvasRefs.current[p - 1];
-          if (!canvas || !active) return;
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext("2d")!;
-          await page.render({ canvasContext: ctx, viewport }).promise;
-        } catch (err) {
-          console.error("Failed to render PDF page:", err);
+          const pg = await pdfDoc.getPage(p);
+          const viewport = pg.getViewport({ scale: DISPLAY_SCALE });
+          sizes.push({
+            w: Math.max(1, Math.round(viewport.width)),
+            h: Math.max(1, Math.round(viewport.height)),
+          });
+          if (typeof pg.cleanup === "function") pg.cleanup();
+        } catch {
+          sizes.push({ w: 600, h: 800 });
         }
       }
+      if (active) setPageSizes(sizes);
     }
-    renderAll();
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const n = Number((entry.target as HTMLElement).dataset.page || 0);
+            if (n >= 1) void renderPageInto(n);
+          }
+        }
+      },
+      {
+        root: document.querySelector(".sign-pages-scroll"),
+        rootMargin: "1200px 0px",
+      },
+    );
+
+    // Page blocks mount in the same commit — defer a frame to observe all.
+    const timer = setTimeout(() => {
+      if (!active) return;
+      pageBlockRefs.current.forEach((el) => {
+        if (el) io.observe(el);
+      });
+      void renderPageInto(1);
+    }, 50);
+
+    void measure();
+
     return () => {
       active = false;
+      clearTimeout(timer);
+      io.disconnect();
     };
+    // renderPageInto closes over this effect's pdfDoc — intentional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdfDoc]);
 
   // --- Draw Mode Handlers ---
@@ -422,9 +484,12 @@ export default function SignPdf({ messages }: Props) {
     setStamps((prev) => prev.filter((s) => s.id !== id));
   }
 
-  function jumpToPage() {
+  async function jumpToPage() {
     const n = Math.max(1, Math.min(totalPages, parseInt(jumpText, 10) || 1));
     setJumpText(String(n));
+    // Paint the target before scrolling so the jump never lands on a
+    // blank placeholder in long documents.
+    await renderPageInto(n);
     pageBlockRefs.current[n - 1]?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -994,7 +1059,7 @@ export default function SignPdf({ messages }: Props) {
                 </button>
                 {stamps.length > 0 && (
                   <span className="sign-page-indicator">
-                    {stamps.length} × ✒
+                    {fmt(messages.stampsPlaced, { n: stamps.length })}
                   </span>
                 )}
               </div>
@@ -1035,6 +1100,7 @@ export default function SignPdf({ messages }: Props) {
                   <div
                     key={page}
                     className="sign-page-wrap"
+                    data-page={page}
                     ref={(el) => {
                       pageBlockRefs.current[i] = el;
                     }}
@@ -1048,8 +1114,14 @@ export default function SignPdf({ messages }: Props) {
                           pageCanvasRefs.current[i] = el;
                         }}
                         className="sign-page"
+                        data-page={page}
                         onClick={(e) => handleCanvasClick(e, page)}
-                        style={{ cursor: signatureUrl ? "crosshair" : "default" }}
+                        style={{
+                          cursor: signatureUrl ? "crosshair" : "default",
+                          aspectRatio: pageSizes[i]
+                            ? `${pageSizes[i].w} / ${pageSizes[i].h}`
+                            : "3 / 4",
+                        }}
                       />
 
                       {signatureUrl &&

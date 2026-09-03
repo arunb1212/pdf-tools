@@ -570,6 +570,10 @@
   padding: 0;
   box-shadow: none;
   display: block;
+  /* Critical: flex items default to flex-shrink: 1, and min-height: 0 above
+     disables the automatic minimum — without this the scroller crushes
+     every page block to zero height (label pile-up on long documents). */
+  flex: none;
 }
 .sign-page-label {
   text-align: center;
@@ -612,6 +616,34 @@
   height: auto;
   background: #ffffff;
   border-radius: 3px;
+}
+
+/* Unrendered pages keep their measured aspect ratio (set inline) and show
+   a shimmer until lazy rasterization paints them — no label pile-ups. */
+.sign-page:not([data-rendered]) {
+  background: linear-gradient(100deg, #eef1f5 40%, #dde4ec 50%, #eef1f5 60%);
+  background-size: 200% 100%;
+  animation: sign-page-shimmer 1.4s linear infinite;
+}
+@keyframes sign-page-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sign-page:not([data-rendered]) {
+    animation: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .sign-doc-toolbar-left,
+  .sign-doc-toolbar > div:last-child {
+    flex: 1 1 100%;
+  }
+  .sign-jump-control input {
+    width: 3rem;
+  }
 }
 
 .sign-hint {

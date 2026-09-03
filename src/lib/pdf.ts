@@ -74,6 +74,7 @@ export interface ToolMessages {
   jumpGo: string;
   rotationLabel: string;
   signHintMulti: string;
+  stampsPlaced: string;
 }
 
 // Fill a "{placeholder}" template, e.g. fmt(t.doneRows, { n: 5, size: "12 KB" }).
