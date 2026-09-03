@@ -199,18 +199,16 @@ export default function CompressPdf({ messages }: Props) {
       const availableImageBytes = Math.max(5000 * numPages, targetBytes - overhead);
       const targetPerPage = availableImageBytes / numPages;
 
-      // High-DPI Resolution Rule:
-      // Text readability strictly requires minimum 140+ DPI (scale >= 1.75 on A4)
-      // At scale 2.0-2.4, characters have 18-24 vertical pixels, ensuring text and tables remain crystal clear.
-      let scale = 2.1;
+      // Determine initial scale based on budget per page
+      let scale = 2.0;
       if (targetPerPage < 50 * 1024) {
-        scale = 1.75;
+        scale = 1.65;
       } else if (targetPerPage < 100 * 1024) {
-        scale = 1.95;
+        scale = 1.85;
       } else if (targetPerPage < 250 * 1024) {
-        scale = 2.15;
+        scale = 2.10;
       } else {
-        scale = 2.40;
+        scale = 2.35;
       }
 
       // Binary Search Calibration on Sample Page 1 to find the optimal JPEG quality
@@ -222,9 +220,11 @@ export default function CompressPdf({ messages }: Props) {
         testCanvas.width = Math.max(1, Math.round(viewport.width));
         testCanvas.height = Math.max(1, Math.round(viewport.height));
         const testCtx = testCanvas.getContext("2d", { alpha: false })!;
+        testCtx.imageSmoothingEnabled = true;
+        testCtx.imageSmoothingQuality = "high";
         testCtx.fillStyle = "#ffffff";
         testCtx.fillRect(0, 0, testCanvas.width, testCanvas.height);
-        await samplePage.render({ canvasContext: testCtx, viewport }).promise;
+        await samplePage.render({ canvasContext: testCtx, viewport, intent: "print" }).promise;
 
         let lowQ = 0.15;
         let highQ = 0.95;
@@ -267,10 +267,12 @@ export default function CompressPdf({ messages }: Props) {
           canvas.width = Math.max(1, Math.round(renderViewport.width));
           canvas.height = Math.max(1, Math.round(renderViewport.height));
           const ctx = canvas.getContext("2d", { alpha: false })!;
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
           ctx.fillStyle = "#ffffff";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-          await page.render({ canvasContext: ctx, viewport: renderViewport }).promise;
+          await page.render({ canvasContext: ctx, viewport: renderViewport, intent: "print" }).promise;
 
           if (i > 1) {
             newPdf.addPage([unscaledViewport.width, unscaledViewport.height]);
@@ -294,25 +296,34 @@ export default function CompressPdf({ messages }: Props) {
         return newPdf.output("blob");
       }
 
-      let resultBlob = await buildRasterPdf(scale, calibratedQuality);
+      let currentScale = scale;
+      let currentQuality = calibratedQuality;
+      let resultBlob = await buildRasterPdf(currentScale, currentQuality);
 
-      // Convergence Step 1: If output exceeds target budget by > 8%, shrink adaptively
-      if (resultBlob.size > targetBytes * 1.08 || resultBlob.size >= originalBytes) {
-        const shrinkFactor = Math.min(0.92, targetBytes / resultBlob.size);
-        const retryScale = Math.max(1.50, scale * Math.sqrt(shrinkFactor));
-        const retryQuality = Math.max(0.15, calibratedQuality * shrinkFactor);
+      // Multi-pass Convergence Loop:
+      // If output exceeds target budget by > 5% or original size, loop and shrink adaptively until target is hit!
+      for (let pass = 0; pass < 3; pass++) {
+        if (resultBlob.size <= targetBytes * 1.05 && resultBlob.size < originalBytes) {
+          break; // Target hit!
+        }
 
-        const retryBlob = await buildRasterPdf(retryScale, retryQuality);
-        if (retryBlob.size < resultBlob.size && retryBlob.size > 0) {
-          resultBlob = retryBlob;
+        const shrinkRatio = Math.min(0.90, targetBytes / resultBlob.size);
+        currentScale = Math.max(1.10, currentScale * Math.sqrt(shrinkRatio));
+        currentQuality = Math.max(0.12, currentQuality * Math.pow(shrinkRatio, 0.65));
+
+        const nextBlob = await buildRasterPdf(currentScale, currentQuality);
+        if (nextBlob.size < resultBlob.size && nextBlob.size > 0) {
+          resultBlob = nextBlob;
+        } else {
+          break;
         }
       }
 
-      // Convergence Step 2: If output significantly undershot the target (< 80% of budget) and quality can be boosted:
-      if (resultBlob.size < targetBytes * 0.80 && calibratedQuality < 0.90) {
+      // If output significantly undershot the target (< 75% of budget) and quality can be boosted:
+      if (resultBlob.size < targetBytes * 0.75 && currentQuality < 0.90) {
         const boostRatio = targetBytes / resultBlob.size;
-        const boostedQuality = Math.min(0.94, calibratedQuality * Math.min(1.35, boostRatio));
-        const boostedScale = Math.min(2.40, scale * 1.10);
+        const boostedQuality = Math.min(0.94, currentQuality * Math.min(1.35, boostRatio));
+        const boostedScale = Math.min(2.40, currentScale * 1.15);
 
         const boostedBlob = await buildRasterPdf(boostedScale, boostedQuality);
         if (boostedBlob.size <= targetBytes * 1.05 && boostedBlob.size > resultBlob.size) {
