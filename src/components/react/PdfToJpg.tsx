@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
-import { formatBytes, loadPdfJs, type ToolMessages } from "@/lib/pdf";
+import { fmt, formatBytes, loadPdfJs, type ToolMessages } from "@/lib/pdf";
 import { PDF_ENDPOINTS, expandZipBlob, isZipBlob, tryServerApi } from "@/lib/api";
 
 interface Props {
@@ -51,11 +51,11 @@ export default function PdfToJpg({ messages }: Props) {
           if (isZipBlob(blob)) {
             const outputs = await expandZipBlob(blob);
             setDownloads(outputs);
-            setDoneLabel(`${outputs.length} images · ${formatBytes(blob.size)} · via secure server`);
+            setDoneLabel(`${fmt(messages.doneImages, { n: outputs.length, size: formatBytes(blob.size) })} ${messages.viaServer}`);
           } else {
             const url = URL.createObjectURL(blob);
             setDownloads([{ url, name: `${base}-page-1.jpg` }]);
-            setDoneLabel(`1 image · ${formatBytes(blob.size)} · via secure server`);
+            setDoneLabel(`${fmt(messages.doneImages, { n: 1, size: formatBytes(blob.size) })} ${messages.viaServer}`);
           }
           setState("done");
           return;
@@ -90,7 +90,7 @@ export default function PdfToJpg({ messages }: Props) {
 
       setDownloads(outputs);
       const totalBytes = await Promise.all(outputs.map(async (o) => (await (await fetch(o.url)).blob()).size));
-      setDoneLabel(`${outputs.length} image${outputs.length > 1 ? "s" : ""} · ${formatBytes(totalBytes.reduce((a, b) => a + b, 0))}`);
+      setDoneLabel(fmt(messages.doneImages, { n: outputs.length, size: formatBytes(totalBytes.reduce((a, b) => a + b, 0)) }));
       setState("done");
     } catch (e) {
       console.error(e);

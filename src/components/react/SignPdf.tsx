@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
-import { loadPdfJs, loadPdfLib, loadJsPDF, pdfBlob, type ToolMessages } from "@/lib/pdf";
+import { fmt, loadPdfJs, loadPdfLib, loadJsPDF, pdfBlob, type ToolMessages } from "@/lib/pdf";
 import { PDF_ENDPOINTS, tryServerApi } from "@/lib/api";
 import {
   PenToolIcon,
@@ -549,7 +549,7 @@ export default function SignPdf({ messages }: Props) {
             if (downloadUrl) URL.revokeObjectURL(downloadUrl);
             setDownloadUrl(url);
             setFilename(`signed-${file.name.replace(/\.pdf$/i, "")}.pdf`);
-            setDoneLabel(`Signature successfully applied to page ${targetIndex + 1} of ${pages.length} · via secure server`);
+            setDoneLabel(`${fmt(messages.doneSigned, { page: targetIndex + 1, pages: pages.length })} ${messages.viaServer}`);
             setState("done");
             return;
           }
@@ -569,7 +569,7 @@ export default function SignPdf({ messages }: Props) {
         const url = URL.createObjectURL(blob);
         setDownloadUrl(url);
         setFilename(`signed-${file.name.replace(/\.pdf$/i, "")}.pdf`);
-        setDoneLabel(`Signature successfully applied to page ${placedPage} of ${pages.length}`);
+        setDoneLabel(fmt(messages.doneSigned, { page: placedPage, pages: pages.length }));
         setState("done");
         return;
       } catch (pdfLibErr) {
@@ -616,7 +616,7 @@ export default function SignPdf({ messages }: Props) {
       const url = URL.createObjectURL(blob);
       setDownloadUrl(url);
       setFilename(`signed-${file.name.replace(/\.pdf$/i, "")}.pdf`);
-      setDoneLabel(`Signature applied to page ${placedPage} of ${pdf.numPages}`);
+      setDoneLabel(fmt(messages.doneSigned, { page: placedPage, pages: pdf.numPages }));
       setState("done");
     } catch (err) {
       console.error("Sign PDF error:", err);

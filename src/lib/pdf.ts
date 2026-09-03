@@ -50,6 +50,30 @@ export interface ToolMessages {
   columnsLabel: string;
   rowsLabel: string;
   reorderHint: string;
+  /** "· via secure server" suffix appended to server-processed results. */
+  viaServer: string;
+  doneSplitOne: string;
+  doneSplitMany: string;
+  doneSplitPages: string;
+  doneLocked: string;
+  doneUnlocked: string;
+  doneImages: string;
+  imageUnit: string;
+  doneRows: string;
+  doneOcr: string;
+  doneTable: string;
+  doneCompressed: string;
+  doneOptimal: string;
+  doneSigned: string;
+  doneRedacted: string;
+  doneFormFilled: string;
+  trustLineServer: string;
+  badgeServer: string;
+}
+
+// Fill a "{placeholder}" template, e.g. fmt(t.doneRows, { n: 5, size: "12 KB" }).
+export function fmt(template: string, vars: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? ""));
 }
 
 // Format a byte count into a human-readable size.

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
-import { loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
+import { fmt, loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
 import { PDF_ENDPOINTS, expandZipBlob, isZipBlob, tryServerApi } from "@/lib/api";
 
 type Mode = "ranges" | "pages";
@@ -77,12 +77,12 @@ export default function SplitPdf({ messages }: Props) {
           if (isZipBlob(blob)) {
             const outputs = await expandZipBlob(blob);
             setDownloads(outputs);
-            setDoneLabel(`${outputs.length} single-page PDFs created · via secure server.`);
+            setDoneLabel(`${fmt(messages.doneSplitPages, { n: outputs.length })} ${messages.viaServer}`);
           } else {
             const url = URL.createObjectURL(blob);
             const name = `split-${serverRanges.replace(/[^0-9a-z]+/gi, "-")}.pdf`;
             setDownloads([{ url, name }]);
-            setDoneLabel(`1 PDF created · via secure server.`);
+            setDoneLabel(`${messages.doneSplitOne} ${messages.viaServer}`);
           }
           setState("done");
           return;
@@ -113,12 +113,16 @@ export default function SplitPdf({ messages }: Props) {
         for (const [start, end] of ranges) {
           await makeDoc(start - 1, end - 1, `split-${start}-${end}.pdf`);
         }
-        setDoneLabel(`${ranges.length} PDF${ranges.length > 1 ? "s" : ""} created.`);
+        setDoneLabel(
+          ranges.length === 1
+            ? messages.doneSplitOne
+            : fmt(messages.doneSplitMany, { n: ranges.length }),
+        );
       } else {
         for (let i = 0; i < total; i++) {
           await makeDoc(i, i, `page-${i + 1}.pdf`);
         }
-        setDoneLabel(`${total} single-page PDF${total > 1 ? "s" : ""} created.`);
+        setDoneLabel(fmt(messages.doneSplitPages, { n: total }));
       }
 
       setDownloads(outputs);

@@ -311,8 +311,8 @@
   border: 1px solid var(--color-border);
   background: var(--color-bg);
   border-radius: var(--radius-sm);
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -355,6 +355,44 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Narrow screens: file rows become two-line (name on top, size + actions
+   below) so names stay readable and touch targets reach 44px. */
+@media (max-width: 560px) {
+  .merge-list__item {
+    flex-wrap: wrap;
+    gap: 0.6rem 0.5rem;
+  }
+  .merge-list__name {
+    flex: 1 1 100%;
+  }
+  .merge-list__meta {
+    margin-right: auto;
+  }
+  .merge-list__btn {
+    width: 44px;
+    height: 44px;
+  }
+  .split-downloads li {
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+  }
+  .split-downloads li .btn {
+    flex: none;
+    padding-left: 1.1rem;
+    padding-right: 1.1rem;
+  }
+  .split-downloads__name {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .result {
+    padding: 1.25rem;
+  }
+  .result__actions .btn {
+    flex: 1 1 100%;
+  }
 }
 
 /* Result states - Enhanced */

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
-import { loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
+import { fmt, loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
 import {
   DocumentIcon,
   ShieldLockIcon,
@@ -551,7 +551,7 @@ export default function FillFormPdf({ messages, locale = "en" }: Props) {
       const url = URL.createObjectURL(blob);
       setDownloadUrl(url);
       setFilename(`filled-${file.name.replace(/\.pdf$/i, "")}.pdf`);
-      setDoneLabel(`Completed form with ${items.length} filled entries ready for download.`);
+      setDoneLabel(fmt(messages.doneFormFilled, { n: items.length }));
       setState("done");
     } catch (err) {
       console.error("Bake form error:", err);

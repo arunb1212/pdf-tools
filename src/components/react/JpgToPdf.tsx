@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
-import { formatBytes, loadJsPDF, type ToolMessages } from "@/lib/pdf";
+import { fmt, formatBytes, loadJsPDF, type ToolMessages } from "@/lib/pdf";
 import { PDF_ENDPOINTS, tryServerApi } from "@/lib/api";
 import { CloseIcon } from "./Icons";
 
@@ -63,7 +63,7 @@ export default function JpgToPdf({ messages }: Props) {
         if (downloadUrl) URL.revokeObjectURL(downloadUrl);
         setDownloadUrl(URL.createObjectURL(blob));
         setFilename(`images-${Date.now()}.pdf`);
-        setDoneLabel(`${files.length} image${files.length > 1 ? "s" : ""} · ${formatBytes(blob.size)} · via secure server`);
+        setDoneLabel(`${fmt(messages.doneImages, { n: files.length, size: formatBytes(blob.size) })} ${messages.viaServer}`);
         setState("done");
         return;
       }
@@ -100,7 +100,7 @@ export default function JpgToPdf({ messages }: Props) {
       const blob = doc.output("blob");
       setDownloadUrl(URL.createObjectURL(blob));
       setFilename(`images-${Date.now()}.pdf`);
-      setDoneLabel(`${files.length} image${files.length > 1 ? "s" : ""} · ${formatBytes(blob.size)}`);
+      setDoneLabel(fmt(messages.doneImages, { n: files.length, size: formatBytes(blob.size) }));
       setState("done");
     } catch (e) {
       console.error(e);

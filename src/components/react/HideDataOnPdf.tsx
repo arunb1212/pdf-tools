@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
-import { loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
+import { fmt, loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
 import { PDF_ENDPOINTS, tryServerApi } from "@/lib/api";
 import { ShieldLockIcon, DownloadIcon, TrashIcon } from "./Icons";
 
@@ -369,7 +369,7 @@ export default function HideDataOnPdf({ messages }: Props) {
             setDownloadUrl(url);
             setFilename(`redacted-${file.name.replace(/\.pdf$/i, "")}.pdf`);
             setDoneLabel(
-              `Permanently redacted ${redactions.length} area${redactions.length > 1 ? "s" : ""} across ${totalPages} page${totalPages > 1 ? "s" : ""} · via secure server.`
+              `${fmt(messages.doneRedacted, { n: redactions.length, pages: totalPages })} ${messages.viaServer}`
             );
             setState("done");
             return;
@@ -439,7 +439,7 @@ export default function HideDataOnPdf({ messages }: Props) {
       setDownloadUrl(url);
       setFilename(`redacted-${file.name.replace(/\.pdf$/i, "")}.pdf`);
       setDoneLabel(
-        `Permanently redacted ${redactions.length} area${redactions.length > 1 ? "s" : ""} across ${totalPages} page${totalPages > 1 ? "s" : ""}.`
+        fmt(messages.doneRedacted, { n: redactions.length, pages: totalPages })
       );
       setState("done");
     } catch (err) {

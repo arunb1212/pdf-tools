@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
-import { formatBytes, loadPdfJs, loadJsPDF, loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
+import { fmt, formatBytes, loadPdfJs, loadJsPDF, loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
 import { PDF_ENDPOINTS, tryServerApi } from "@/lib/api";
 import { CompressionIcon, AlertTriangleIcon } from "./Icons";
 
@@ -399,16 +399,18 @@ export default function CompressPdf({ messages }: Props) {
     setProgress(100);
     setCompressedSize(finalSize);
 
-    const suffix = viaServer ? " · via secure server" : "";
+    const suffix = viaServer ? ` ${messages.viaServer}` : "";
     if (finalSize < originalBytes) {
       const compressionPercent = Math.round((1 - finalSize / originalBytes) * 100);
       setDoneLabel(
-        `Compressed from ${formatBytes(originalBytes)} to ${formatBytes(finalSize)} (${compressionPercent}% smaller)${suffix}`
+        `${fmt(messages.doneCompressed, {
+          a: formatBytes(originalBytes),
+          b: formatBytes(finalSize),
+          p: compressionPercent,
+        })}${suffix}`
       );
     } else {
-      setDoneLabel(
-        `Document is already at maximum compression (${formatBytes(originalBytes)}).`
-      );
+      setDoneLabel(fmt(messages.doneOptimal, { size: formatBytes(originalBytes) }));
     }
 
     if (downloadUrl) URL.revokeObjectURL(downloadUrl);

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
-import { formatBytes, loadJsPDF, type ToolMessages } from "@/lib/pdf";
+import { fmt, formatBytes, loadJsPDF, type ToolMessages } from "@/lib/pdf";
 import { PDF_ENDPOINTS, tryServerApi } from "@/lib/api";
 
 interface Props {
@@ -105,7 +105,7 @@ export default function CsvToPdf({ messages }: Props) {
     // matching the browser path below).
     try {
       const text = await file.text();
-      const { headers } = parseCsv(text);
+      const { headers, rows } = parseCsv(text);
       if (headers.length > 0) {
         const fd = new FormData();
         fd.append("file", file, file.name);
@@ -116,7 +116,7 @@ export default function CsvToPdf({ messages }: Props) {
           if (downloadUrl) URL.revokeObjectURL(downloadUrl);
           setDownloadUrl(URL.createObjectURL(blob));
           setFilename(`${file.name.replace(/\.csv$/i, "")}-table.pdf`);
-          setDoneLabel(`Table PDF · ${formatBytes(blob.size)} · via secure server`);
+          setDoneLabel(`${fmt(messages.doneTable, { cols: headers.length, rows: rows.length, size: formatBytes(blob.size) })} ${messages.viaServer}`);
           setState("done");
           return;
         }
@@ -189,7 +189,7 @@ export default function CsvToPdf({ messages }: Props) {
       const blob = doc.output("blob");
       setDownloadUrl(URL.createObjectURL(blob));
       setFilename(`${file.name.replace(/\.csv$/i, "")}-table.pdf`);
-      setDoneLabel(`${headers.length} columns · ${rows.length} rows · ${formatBytes(blob.size)}`);
+      setDoneLabel(fmt(messages.doneTable, { cols: headers.length, rows: rows.length, size: formatBytes(blob.size) }));
       setState("done");
     } catch (e) {
       console.error(e);

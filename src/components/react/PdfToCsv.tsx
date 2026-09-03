@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
-import { formatBytes, loadPdfJs, toCsv, type ToolMessages } from "@/lib/pdf";
+import { fmt, formatBytes, loadPdfJs, toCsv, type ToolMessages } from "@/lib/pdf";
 import { PDF_ENDPOINTS, tryServerApi } from "@/lib/api";
 
 interface Props {
@@ -104,7 +104,7 @@ export default function PdfToCsv({ messages }: Props) {
         if (downloadUrl) URL.revokeObjectURL(downloadUrl);
         setDownloadUrl(URL.createObjectURL(blob));
         setFilename(`${file.name.replace(/\.pdf$/i, "")}-extracted.csv`);
-        setDoneLabel(`Extracted ${rowCount} rows · ${formatBytes(blob.size)} · via secure server`);
+        setDoneLabel(`${fmt(messages.doneRows, { n: rowCount, size: formatBytes(blob.size) })} ${messages.viaServer}`);
         setState("done");
         return;
       }
@@ -149,7 +149,7 @@ export default function PdfToCsv({ messages }: Props) {
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       setDownloadUrl(URL.createObjectURL(blob));
       setFilename(`${file.name.replace(/\.pdf$/i, "")}-extracted.csv`);
-      setDoneLabel(`Extracted ${allRows.length} rows · ${formatBytes(blob.size)}`);
+      setDoneLabel(fmt(messages.doneRows, { n: allRows.length, size: formatBytes(blob.size) }));
       setState("done");
     } catch (e) {
       console.error(e);

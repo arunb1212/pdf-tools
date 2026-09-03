@@ -75,6 +75,24 @@ const messages = {
   columnsLabel: t.columnsLabel,
   rowsLabel: t.rowsLabel,
   reorderHint: t.reorderHint,
+  viaServer: t.viaServer,
+  doneSplitOne: t.doneSplitOne,
+  doneSplitMany: t.doneSplitMany,
+  doneSplitPages: t.doneSplitPages,
+  doneLocked: t.doneLocked,
+  doneUnlocked: t.doneUnlocked,
+  doneImages: t.doneImages,
+  imageUnit: t.imageUnit,
+  doneRows: t.doneRows,
+  doneOcr: t.doneOcr,
+  doneTable: t.doneTable,
+  doneCompressed: t.doneCompressed,
+  doneOptimal: t.doneOptimal,
+  doneSigned: t.doneSigned,
+  doneRedacted: t.doneRedacted,
+  doneFormFilled: t.doneFormFilled,
+  trustLineServer: t.trustLineServer,
+  badgeServer: t.badgeServer,
 };
 
 const related = getRelatedToolIds(toolDef).map((id) => getTool(id)!);
@@ -131,6 +149,19 @@ const isBuilt = [
 ].includes(data.component);
 
 const isWideTool = ["FillFormPdf", "SignPdf", "HideDataOnPdf"].includes(data.component);
+
+// Baked at build time: when the API URL is set, client tools run
+// server-first, so the badge + trust line must not claim "no upload".
+const serverConfigured =
+  ((import.meta.env.PUBLIC_PDF_API_URL as string | undefined) ?? "").trim() !== "";
+// FillFormPdf never uploads (visual annotations are baked in-browser).
+const mayUpload = serverConfigured && data.component !== "FillFormPdf";
+const badgeText =
+  serverConfigured && data.processing === "client"
+    ? t.badgeServer
+    : data.processing === "client"
+      ? t.fullyClientSide
+      : t.serverFallback;
 ---
 
 <BaseLayout
@@ -155,7 +186,7 @@ const isWideTool = ["FillFormPdf", "SignPdf", "HideDataOnPdf"].includes(data.com
       </nav>
       <header class="tool-page__header">
         <span class="tool-badge" data-processing={data.processing}>
-          {data.processing === "client" ? t.fullyClientSide : t.serverFallback}
+          {badgeText}
         </span>
         <h1>{data.shortTitle}</h1>
         <p class="tool-page__tagline">{data.description}</p>
@@ -189,7 +220,7 @@ const isWideTool = ["FillFormPdf", "SignPdf", "HideDataOnPdf"].includes(data.com
               <rect x="3" y="11" width="18" height="11" rx="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
-            {t.trustLine}
+            {mayUpload ? t.trustLineServer : t.trustLine}
           </p>
         )}
       </section>

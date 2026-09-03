@@ -49,7 +49,7 @@ export default function MergePdf({ messages }: Props) {
         if (downloadUrl) URL.revokeObjectURL(downloadUrl);
         setDownloadUrl(url);
         setFilename(`merged-${Date.now()}.pdf`);
-        setDoneLabel(`${files.length} files · ${formatBytes(blob.size)} · via secure server`);
+        setDoneLabel(`${files.length} × PDF · ${formatBytes(blob.size)} ${messages.viaServer}`);
         setState("done");
         return;
       }
@@ -70,7 +70,7 @@ export default function MergePdf({ messages }: Props) {
       const url = URL.createObjectURL(blob);
       setDownloadUrl(url);
       setFilename(`merged-${Date.now()}.pdf`);
-      setDoneLabel(`${files.length} files · ${formatBytes(blob.size)}`);
+      setDoneLabel(`${files.length} × PDF · ${formatBytes(blob.size)}`);
       setState("done");
     } catch (e) {
       console.error(e);

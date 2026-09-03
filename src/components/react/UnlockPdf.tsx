@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
-import { formatBytes, loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
+import { fmt, formatBytes, loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
 import { PDF_ENDPOINTS, PdfApiError, isServerConfigured, tryServerApi } from "@/lib/api";
 
 interface Props {
@@ -44,7 +44,7 @@ export default function UnlockPdf({ messages }: Props) {
         if (downloadUrl) URL.revokeObjectURL(downloadUrl);
         setDownloadUrl(URL.createObjectURL(blob));
         setFilename(`unlocked-${Date.now()}.pdf`);
-        setDoneLabel(`Unlocked · ${formatBytes(blob.size)} · via secure server`);
+        setDoneLabel(`${fmt(messages.doneUnlocked, { size: formatBytes(blob.size) })} ${messages.viaServer}`);
         setState("done");
         return;
       }
@@ -71,7 +71,7 @@ export default function UnlockPdf({ messages }: Props) {
       const blob = pdfBlob(out);
       setDownloadUrl(URL.createObjectURL(blob));
       setFilename(`unlocked-${Date.now()}.pdf`);
-      setDoneLabel(`Unlocked · ${formatBytes(blob.size)}`);
+      setDoneLabel(fmt(messages.doneUnlocked, { size: formatBytes(blob.size) }));
       setState("done");
     } catch (e) {
       console.error(e);

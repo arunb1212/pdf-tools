@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
-import { csvEscape, formatBytes, type ToolMessages } from "@/lib/pdf";
+import { csvEscape, fmt, formatBytes, type ToolMessages } from "@/lib/pdf";
 import { PDF_ENDPOINTS, isServerConfigured, tryServerApi } from "@/lib/api";
 
 interface Props {
@@ -67,7 +67,7 @@ export default function JpgToCsv({ messages }: Props) {
         if (downloadUrl) URL.revokeObjectURL(downloadUrl);
         setDownloadUrl(URL.createObjectURL(blob));
         setFilename(`${file.name.replace(/\.[^.]+$/, "")}-ocr.csv`);
-        setDoneLabel(`OCR complete · ${rowCount} rows · ${formatBytes(blob.size)} · via secure server`);
+        setDoneLabel(`${fmt(messages.doneOcr, { n: rowCount, size: formatBytes(blob.size) })} ${messages.viaServer}`);
         setState("done");
         return;
       }
@@ -90,7 +90,7 @@ export default function JpgToCsv({ messages }: Props) {
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       setDownloadUrl(URL.createObjectURL(blob));
       setFilename(`${file.name.replace(/\.[^.]+$/, "")}-ocr.csv`);
-      setDoneLabel(`OCR complete · ${rows.length} rows · ${formatBytes(blob.size)}`);
+      setDoneLabel(fmt(messages.doneOcr, { n: rows.length, size: formatBytes(blob.size) }));
       setState("done");
     } catch (e) {
       console.error(e);
