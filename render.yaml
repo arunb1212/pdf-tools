@@ -1,0 +1,17 @@
+# Render Blueprint — deploy the zero-retention PDF microservice.
+# Dashboard: New → Blueprint → select this repo (file auto-detected here).
+services:
+  - type: web
+    name: pdf-tools-server
+    runtime: docker
+    dockerContext: ./server
+    dockerfilePath: ./server/Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: CORS_ORIGINS
+        # Must match the deployed frontend origin(s), comma-separated.
+        value: https://pdf-tools-lemon-nine.vercel.app
+      - key: MAX_FILE_MB
+        value: 50
+      # NOTE: Render injects PORT automatically — do not hardcode it.
