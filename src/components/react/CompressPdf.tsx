@@ -150,138 +150,103 @@ export default function CompressPdf({ messages }: Props) {
       const pdf = await pdfjs.getDocument({ data: new Uint8Array(bytes) }).promise;
       const numPages = pdf.numPages;
 
-      let scale = 1.0;
-      let jpegQuality = 0.55;
-
       const targetBytes = getTargetBytes();
+      const originalBytes = file.size;
 
-      if (targetBytes >= originalSize) {
-        scale = 1.4;
-        jpegQuality = 0.88;
-      } else {
-        // Precise sample calibration using page 1
-        const firstPage = await pdf.getPage(1);
-        const overhead = 1500 + numPages * 650;
-        const availableImageBytes = Math.max(1000 * numPages, targetBytes - overhead);
-        const targetPerPage = availableImageBytes / numPages;
-
-        const candidateScales = [1.6, 1.35, 1.1, 0.9, 0.7, 0.5];
-        let bestScale = 1.0;
-        let bestJpegQuality = 0.6;
-        let bestDiff = Infinity;
-
-        for (const testScale of candidateScales) {
-          const viewport = firstPage.getViewport({ scale: testScale });
-          const testCanvas = document.createElement("canvas");
-          testCanvas.width = Math.max(1, Math.round(viewport.width));
-          testCanvas.height = Math.max(1, Math.round(viewport.height));
-          const testCtx = testCanvas.getContext("2d", { alpha: false })!;
-          testCtx.fillStyle = "#ffffff";
-          testCtx.fillRect(0, 0, testCanvas.width, testCanvas.height);
-          await firstPage.render({ canvasContext: testCtx, viewport }).promise;
-
-          let lowQ = 0.15;
-          let highQ = 0.95;
-          let optQ = 0.55;
-          let optSize = 0;
-
-          for (let iter = 0; iter < 7; iter++) {
-            const midQ = (lowQ + highQ) / 2;
-            const dataUrl = testCanvas.toDataURL("image/jpeg", midQ);
-            const approxBytes = Math.round((dataUrl.length - 23) * 0.75);
-            optQ = midQ;
-            optSize = approxBytes;
-
-            if (approxBytes > targetPerPage) {
-              highQ = midQ;
-            } else {
-              lowQ = midQ;
-            }
-          }
-
-          const diff = targetPerPage - optSize;
-          if (optSize <= targetPerPage * 1.03 && diff >= 0) {
-            if (diff < bestDiff) {
-              bestDiff = diff;
-              bestScale = testScale;
-              bestJpegQuality = optQ;
-            }
-            if (optQ >= 0.7) break;
-          } else if (bestDiff === Infinity && optSize <= targetPerPage * 1.1) {
-            bestScale = testScale;
-            bestJpegQuality = optQ;
-          }
-        }
-
-        scale = bestScale;
-        jpegQuality = bestJpegQuality;
-      }
-
-      const { jsPDF } = await loadJsPDF();
-      const newPdf = new jsPDF({ unit: "pt", compress: true });
-
-      for (let i = 1; i <= numPages; i++) {
-        const page = await pdf.getPage(i);
-        const unscaledViewport = page.getViewport({ scale: 1.0 });
-        const renderViewport = page.getViewport({ scale });
-
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(renderViewport.width));
-        canvas.height = Math.max(1, Math.round(renderViewport.height));
-        const ctx = canvas.getContext("2d", { alpha: false })!;
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        await page.render({ canvasContext: ctx, viewport: renderViewport }).promise;
-
-        if (i > 1) {
-          newPdf.addPage([unscaledViewport.width, unscaledViewport.height]);
-        }
-
-        const imgData = canvas.toDataURL("image/jpeg", jpegQuality);
-        newPdf.addImage(
-          imgData,
-          "JPEG",
-          0,
-          0,
-          unscaledViewport.width,
-          unscaledViewport.height,
-          undefined,
-          "FAST"
-        );
-
-        setProgress(Math.round((i / numPages) * 90));
-      }
-
-      let compressedBlob = newPdf.output("blob");
-
-      // Check if structural lossless compression via pdf-lib is smaller than rasterized output
+      // Check if structural lossless compression via pdf-lib is possible
+      let losslessBytes: Uint8Array | null = null;
       try {
         const { PDFDocument } = await loadPdfLib();
         const pdfDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
-        const structuralBytes = await pdfDoc.save({ useObjectStreams: true });
-        if (structuralBytes.length < compressedBlob.size && structuralBytes.length < originalSize) {
-          if (settings.quality >= 75) {
-            compressedBlob = pdfBlob(structuralBytes);
-          }
+        const saved = await pdfDoc.save({ useObjectStreams: true });
+        if (saved.length < originalBytes) {
+          losslessBytes = saved;
         }
       } catch (e) {
-        // Ignore fallback errors and keep rasterized blob
+        // Ignore fallback errors
       }
 
-      let finalSize = compressedBlob.size;
-      let finalBlob = compressedBlob;
+      // If user asks for light compression (>= 75% quality) and lossless saves enough:
+      if (losslessBytes && losslessBytes.length <= targetBytes && settings.quality >= 75) {
+        const finalBlob = pdfBlob(losslessBytes);
+        const finalSize = finalBlob.size;
+        setCompressedSize(finalSize);
+        setProgress(100);
+        const pct = Math.round((1 - finalSize / originalBytes) * 100);
+        setDoneLabel(
+          `Compressed losslessly from ${formatBytes(originalBytes)} to ${formatBytes(finalSize)} (${pct}% smaller)`
+        );
+        const url = URL.createObjectURL(finalBlob);
+        setDownloadUrl(url);
+        setFilename(`compressed-${file.name.replace(/\.pdf$/i, "")}.pdf`);
+        setState("done");
+        return;
+      }
 
-      // Guard: If compressed file is larger than original file and user asked for lower target, retry at lower scale
-      if (finalSize >= originalSize && targetBytes < originalSize) {
-        const retryPdf = new jsPDF({ unit: "pt", compress: true });
-        const retryScale = Math.max(0.4, scale * 0.65);
-        const retryQuality = Math.max(0.12, jpegQuality * 0.6);
+      // Calculate base scale and quality for target byte budget
+      const overhead = 1500 + numPages * 500;
+      const availableImageBytes = Math.max(800 * numPages, targetBytes - overhead);
+      const targetPerPage = availableImageBytes / numPages;
+
+      let baseScale = 1.0;
+      let baseQuality = 0.55;
+
+      if (targetPerPage < 30 * 1024) {
+        baseScale = 0.65;
+        baseQuality = 0.30;
+      } else if (targetPerPage < 60 * 1024) {
+        baseScale = 0.80;
+        baseQuality = 0.45;
+      } else if (targetPerPage < 120 * 1024) {
+        baseScale = 1.0;
+        baseQuality = 0.60;
+      } else if (targetPerPage < 250 * 1024) {
+        baseScale = 1.25;
+        baseQuality = 0.75;
+      } else {
+        baseScale = 1.45;
+        baseQuality = 0.85;
+      }
+
+      // Refine quality by testing sample page 1
+      try {
+        const samplePage = await pdf.getPage(1);
+        const viewport = samplePage.getViewport({ scale: baseScale });
+        const testCanvas = document.createElement("canvas");
+        testCanvas.width = Math.max(1, Math.round(viewport.width));
+        testCanvas.height = Math.max(1, Math.round(viewport.height));
+        const testCtx = testCanvas.getContext("2d", { alpha: false })!;
+        testCtx.fillStyle = "#ffffff";
+        testCtx.fillRect(0, 0, testCanvas.width, testCanvas.height);
+        await samplePage.render({ canvasContext: testCtx, viewport }).promise;
+
+        let lowQ = 0.15;
+        let highQ = 0.90;
+        let bestQ = baseQuality;
+        for (let iter = 0; iter < 6; iter++) {
+          const midQ = (lowQ + highQ) / 2;
+          const dataUrl = testCanvas.toDataURL("image/jpeg", midQ);
+          const approxBytes = Math.round((dataUrl.length - 23) * 0.75);
+          bestQ = midQ;
+          if (approxBytes > targetPerPage) {
+            highQ = midQ;
+          } else {
+            lowQ = midQ;
+          }
+        }
+        baseQuality = bestQ;
+      } catch (e) {
+        // Fallback to default baseQuality
+      }
+
+      async function buildRasterPdf(renderScale: number, renderQuality: number): Promise<Blob> {
+        const { jsPDF } = await loadJsPDF();
+        const newPdf = new jsPDF({ unit: "pt", compress: true });
 
         for (let i = 1; i <= numPages; i++) {
           const page = await pdf.getPage(i);
           const unscaledViewport = page.getViewport({ scale: 1.0 });
-          const renderViewport = page.getViewport({ scale: retryScale });
+          const renderViewport = page.getViewport({ scale: renderScale });
 
           const canvas = document.createElement("canvas");
           canvas.width = Math.max(1, Math.round(renderViewport.width));
@@ -293,11 +258,11 @@ export default function CompressPdf({ messages }: Props) {
           await page.render({ canvasContext: ctx, viewport: renderViewport }).promise;
 
           if (i > 1) {
-            retryPdf.addPage([unscaledViewport.width, unscaledViewport.height]);
+            newPdf.addPage([unscaledViewport.width, unscaledViewport.height]);
           }
 
-          const imgData = canvas.toDataURL("image/jpeg", retryQuality);
-          retryPdf.addImage(
+          const imgData = canvas.toDataURL("image/jpeg", renderQuality);
+          newPdf.addImage(
             imgData,
             "JPEG",
             0,
@@ -307,29 +272,52 @@ export default function CompressPdf({ messages }: Props) {
             undefined,
             "FAST"
           );
+
+          setProgress(Math.round((i / numPages) * 85));
         }
-        const retryBlob = retryPdf.output("blob");
-        if (retryBlob.size < finalSize) {
-          finalBlob = retryBlob;
-          finalSize = retryBlob.size;
+
+        return newPdf.output("blob");
+      }
+
+      let resultBlob = await buildRasterPdf(baseScale, baseQuality);
+
+      // Pass 2: If the output is still significantly larger than target budget or larger than original, retry with adaptive shrinkage
+      if (resultBlob.size > targetBytes * 1.15 || resultBlob.size >= originalBytes) {
+        const shrinkFactor = Math.min(0.85, targetBytes / resultBlob.size);
+        const retryScale = Math.max(0.40, baseScale * Math.sqrt(shrinkFactor));
+        const retryQuality = Math.max(0.12, baseQuality * shrinkFactor);
+
+        const retryBlob = await buildRasterPdf(retryScale, retryQuality);
+        if (retryBlob.size < resultBlob.size) {
+          resultBlob = retryBlob;
         }
       }
 
+      // Absolute safety guard: Output MUST NEVER be larger than the original document!
+      if (resultBlob.size >= originalBytes) {
+        if (losslessBytes && losslessBytes.length < originalBytes) {
+          resultBlob = pdfBlob(losslessBytes);
+        } else {
+          resultBlob = new Blob([bytes], { type: "application/pdf" });
+        }
+      }
+
+      const finalSize = resultBlob.size;
       setProgress(100);
       setCompressedSize(finalSize);
 
-      if (finalSize < originalSize) {
-        const compressionPercent = Math.round((1 - finalSize / originalSize) * 100);
+      if (finalSize < originalBytes) {
+        const compressionPercent = Math.round((1 - finalSize / originalBytes) * 100);
         setDoneLabel(
-          `Compressed from ${formatBytes(originalSize)} to ${formatBytes(finalSize)} (${compressionPercent}% smaller)`
+          `Compressed from ${formatBytes(originalBytes)} to ${formatBytes(finalSize)} (${compressionPercent}% smaller)`
         );
       } else {
         setDoneLabel(
-          `Document is already optimal (${formatBytes(originalSize)}). Output: ${formatBytes(finalSize)}.`
+          `Document is already at maximum compression (${formatBytes(originalBytes)}).`
         );
       }
 
-      const url = URL.createObjectURL(finalBlob);
+      const url = URL.createObjectURL(resultBlob);
       setDownloadUrl(url);
       setFilename(`compressed-${file.name.replace(/\.pdf$/i, "")}.pdf`);
       setState("done");
@@ -349,6 +337,8 @@ export default function CompressPdf({ messages }: Props) {
     setCompressedSize(0);
     setProgress(0);
   }
+
+  const sliderFillPercent = ((settings.quality - 10) / 90) * 100;
 
   return (
     <div className="tool">
@@ -405,7 +395,7 @@ export default function CompressPdf({ messages }: Props) {
                 onChange={(e) => handleQualityChange(Number(e.target.value))}
                 className="compress-slider__input"
                 style={{
-                  background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${((settings.quality - 10) / 90) * 100}%, var(--color-border, #e2e8f0) ${((settings.quality - 10) / 90) * 100}%, var(--color-border, #e2e8f0) 100%)`,
+                  background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${sliderFillPercent}%, var(--color-border, #e2e8f0) ${sliderFillPercent}%, var(--color-border, #e2e8f0) 100%)`,
                 }}
                 disabled={state === "processing"}
               />
