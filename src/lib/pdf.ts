@@ -75,6 +75,7 @@ export interface ToolMessages {
   rotationLabel: string;
   signHintMulti: string;
   stampsPlaced: string;
+  serverFallbackNote: string;
 }
 
 // Fill a "{placeholder}" template, e.g. fmt(t.doneRows, { n: 5, size: "12 KB" }).

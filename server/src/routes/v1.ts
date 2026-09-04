@@ -84,7 +84,8 @@ export function registerV1(app: FastifyInstance) {
       const up = need(files);
       const inPath = await saveUpload(scratch, "in.pdf", up.data, MAX_FILE_BYTES());
       const quality = num(fields.quality, 50);
-      const outPath = await compressPdf(scratch, inPath, quality);
+      const targetKB = fields.targetKB != null && fields.targetKB !== "" ? Number(fields.targetKB) : undefined;
+      const outPath = await compressPdf(scratch, inPath, quality, targetKB);
       return sendFile(reply, outPath, { filename: "compressed.pdf", contentType: "application/pdf" });
     } finally {
       await scratch.cleanup();

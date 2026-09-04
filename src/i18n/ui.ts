@@ -139,6 +139,7 @@ export const ui = {
     rotationLabel: "Rotation",
     signHintMulti: "Click any page to stamp another signature — drag to move, × to remove.",
     stampsPlaced: "{n} placed",
+    serverFallbackNote: "Server couldn't process this — compressed in your browser instead (slower).",
   }),
   de: make("de", {
     siteName: "PDF Tools",
@@ -264,6 +265,7 @@ export const ui = {
     rotationLabel: "Drehung",
     signHintMulti: "Klicke auf eine Seite für eine weitere Signatur — ziehen zum Verschieben, × zum Entfernen.",
     stampsPlaced: "{n} platziert",
+    serverFallbackNote: "Server konnte das nicht verarbeiten — stattdessen im Browser komprimiert (langsamer).",
   }),
 } as const;
 

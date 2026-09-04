@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FileDropzone } from "./FileDropzone";
 import { ProcessResult } from "./ProcessResult";
 import { fmt, formatBytes, loadPdfJs, loadJsPDF, loadPdfLib, pdfBlob, type ToolMessages } from "@/lib/pdf";
-import { PDF_ENDPOINTS, tryServerApi } from "@/lib/api";
+import { PDF_ENDPOINTS, isServerConfigured, tryServerApi } from "@/lib/api";
 import { CompressionIcon, AlertTriangleIcon } from "./Icons";
 
 interface Props {
@@ -145,9 +145,11 @@ export default function CompressPdf({ messages }: Props) {
     setState("processing");
     setProgress(0);
 
-    // Server-first: Ghostscript vector-preserving compression.
+    // Server-first: Ghostscript target-seeking compression (fast).
     // Only accepted when it actually shrinks the file; otherwise the
     // browser path below runs (it has its own already-optimal guard).
+    const serverConfigured = isServerConfigured();
+    let browserNote = "";
     try {
       const fd = new FormData();
       fd.append("file", file, file.name);
@@ -158,8 +160,12 @@ export default function CompressPdf({ messages }: Props) {
         finishCompression(blob, file.size, false, true);
         return;
       }
+      // Configured but no usable output (server down/cold): the browser
+      // loop below is much slower — say so honestly in the result.
+      if (serverConfigured) browserNote = messages.serverFallbackNote;
     } catch (e) {
       console.warn("Server compression failed, falling back to browser processing:", e);
+      if (serverConfigured) browserNote = messages.serverFallbackNote;
     }
     setProgress(0);
 
@@ -199,7 +205,7 @@ export default function CompressPdf({ messages }: Props) {
         losslessBlob.size > 0 &&
         targetQualityPct >= 70
       ) {
-        finishCompression(losslessBlob, originalBytes, true);
+        finishCompression(losslessBlob, originalBytes, true, false, browserNote);
         return;
       }
 
@@ -259,6 +265,10 @@ export default function CompressPdf({ messages }: Props) {
       if (calibrationCanvas && numPages > 0) {
         currentQuality = await calibrateQualityForTarget(calibrationCanvas, targetPerPage);
       }
+      // Scale the calibration canvas was rendered at. build() compares
+      // against this (not currentScale, which mutates every pass) so page 1
+      // is actually re-rasterized when the scale changes.
+      let calibrationScale = currentScale;
 
       const build = async (renderScale: number, renderQuality: number): Promise<Blob> => {
         const { jsPDF } = await loadJsPDF();
@@ -273,7 +283,7 @@ export default function CompressPdf({ messages }: Props) {
 
           if (i === 1 && calibrationCanvas) {
             // Reuse already-rendered page 1 (re-rasterized only if scale changed).
-            if (Math.abs(renderScale - currentScale) > 0.001) {
+            if (Math.abs(renderScale - calibrationScale) > 0.001) {
               const page1 = await pdf.getPage(1);
               const vp1 = page1.getViewport({ scale: renderScale });
               calibrationCanvas.width = Math.max(1, Math.round(vp1.width));
@@ -288,6 +298,7 @@ export default function CompressPdf({ messages }: Props) {
                 viewport: vp1,
                 intent: "print",
               }).promise;
+              calibrationScale = renderScale;
             }
             imgBlob = await canvasToJpegBlob(calibrationCanvas, renderQuality);
           } else {
@@ -374,6 +385,23 @@ export default function CompressPdf({ messages }: Props) {
         }
       }
 
+      // Undershoot guard: the loop above can exit far below target when it
+      // runs out of passes while boosting (e.g. 380KB for an 830KB target).
+      // Spend up to 3 extra boost-only passes while headroom remains so the
+      // output lands near the target instead of over-compressing.
+      for (let extra = 0; extra < 3; extra++) {
+        if (resultBlob.size >= targetBytes * 0.7) break;
+        if (currentQuality >= 0.95 && currentScale >= 2.4) break;
+        currentQuality = Math.min(0.95, currentQuality * 1.35);
+        currentScale = Math.min(2.4, currentScale * 1.12);
+        const nextBlob = await build(currentScale, currentQuality);
+        if (nextBlob && nextBlob.size > 0) {
+          resultBlob = nextBlob;
+        } else {
+          break;
+        }
+      }
+
       // Final safety guard: never return 0 bytes or anything larger than the original.
       if (!resultBlob || resultBlob.size === 0) {
         if (losslessBlob && losslessBlob.size > 0) {
@@ -387,19 +415,19 @@ export default function CompressPdf({ messages }: Props) {
         resultBlob = file;
       }
 
-      finishCompression(resultBlob, originalBytes, false);
+      finishCompression(resultBlob, originalBytes, false, false, browserNote);
     } catch (err) {
       console.error("Compression error:", err);
       setState("error");
     }
   }
 
-  function finishCompression(resultBlob: Blob, originalBytes: number, _lossless: boolean, viaServer = false) {
+  function finishCompression(resultBlob: Blob, originalBytes: number, _lossless: boolean, viaServer = false, note = "") {
     const finalSize = resultBlob.size;
     setProgress(100);
     setCompressedSize(finalSize);
 
-    const suffix = viaServer ? ` ${messages.viaServer}` : "";
+    const suffix = `${viaServer ? ` ${messages.viaServer}` : ""}${note ? ` ${note}` : ""}`;
     if (finalSize < originalBytes) {
       const compressionPercent = Math.round((1 - finalSize / originalBytes) * 100);
       setDoneLabel(
